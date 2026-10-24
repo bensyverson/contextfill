@@ -42,14 +42,14 @@ As a Claude Code hook, it tells the model its fill each time a Bash call commits
     "PostToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "contextfill hook --max 40", "timeout": 10 }]
+        "hooks": [{ "type": "command", "command": "contextfill hook --max 40 --main-max 25", "timeout": 10 }]
       }
     ]
   }
 }
 ```
 
-Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a nudge to write the handoff once the fill passes 40%. Any other command gets no output.
+Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a nudge to write the handoff once the fill passes 40%. `--main-max 25` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Any other command gets no output.
 
 ## How it works
 

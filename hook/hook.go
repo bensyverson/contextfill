@@ -31,12 +31,29 @@ type response struct {
 	} `json:"hookSpecificOutput"`
 }
 
+// Limits are the fill percentages past which the hook advises a handoff. 0
+// means no limit.
+type Limits struct {
+	// Max applies to subagents, and to the main thread when MainMax is 0.
+	Max float64
+	// MainMax applies to the main thread, the payload without an agent_id.
+	MainMax float64
+}
+
+// For returns the limit for a payload from the given agent; "" is the main
+// thread.
+func (l Limits) For(agentID string) float64 {
+	if agentID == "" && l.MainMax > 0 {
+		return l.MainMax
+	}
+	return l.Max
+}
+
 // Respond reads a PostToolUse payload and, when its Bash command commits,
 // returns the JSON that hands the model its context fill: the subagent's own
-// when the payload names one, else the main thread's. A maxPercent above 0
-// adds handoff advice once the fill passes it. Any other tool call gets no
-// output.
-func Respond(r io.Reader, maxPercent float64) ([]byte, error) {
+// when the payload names one, else the main thread's. Once the fill passes
+// its limit, it adds handoff advice. Any other tool call gets no output.
+func Respond(r io.Reader, limits Limits) ([]byte, error) {
 	var in input
 	if err := json.NewDecoder(r).Decode(&in); err != nil {
 		return nil, fmt.Errorf("reading the hook payload: %w", err)
@@ -59,7 +76,7 @@ func Respond(r io.Reader, maxPercent float64) ([]byte, error) {
 
 	text := fmt.Sprintf("contextfill: %s · %s tokens in context after this commit.",
 		reading.Summary(), transcript.Tokens(reading.Used))
-	if maxPercent > 0 && reading.Fill()*100 > maxPercent {
+	if maxPercent := limits.For(in.AgentID); maxPercent > 0 && reading.Fill()*100 > maxPercent {
 		text += fmt.Sprintf(" That is over the %s%% limit: finish what's in flight and write the handoff rather than starting new work.",
 			strconv.FormatFloat(maxPercent, 'f', -1, 64))
 	}

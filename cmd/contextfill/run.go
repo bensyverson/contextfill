@@ -49,7 +49,7 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 		return exitOK
 	}
 	if o.hook {
-		out, err := hook.Respond(stdin, o.maxPercent)
+		out, err := hook.Respond(stdin, hook.Limits{Max: o.maxPercent, MainMax: o.mainMaxPercent})
 		if err != nil {
 			// Not exit 2, which would block the tool call the hook follows.
 			fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
@@ -175,7 +175,11 @@ Usage:
 As a Claude Code PostToolUse hook on Bash, it tells the model its fill after
 every git commit (a subagent gets its own), and stays silent otherwise:
 
-  contextfill hook --max 40    reads the hook payload on stdin
+  contextfill hook --max 40    reads the hook payload on stdin; past 40% it says
+                               to finish what's in flight and write the handoff
+  contextfill hook --max 40 --main-max 25
+                               the same, but the main thread's limit is 25%
+                               (--main-max falls back to --max)
 
 Exit codes: 0 ok · 1 over --max · 2 usage error · 4 transcript missing or
 unreadable · 5 no session to read.

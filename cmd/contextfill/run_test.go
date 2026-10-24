@@ -158,7 +158,7 @@ func TestAnUnknownSessionExitsFourAndNamesWhereItLooked(t *testing.T) {
 
 func TestUsageErrorsExitTwo(t *testing.T) {
 	env := map[string]string{"CLAUDE_CODE_SESSION_ID": sessionID}
-	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}} {
+	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}, {"--main-max", "25"}, {"hook", "--main-max", "0"}} {
 		if code, _, errOut := invoke(env, args...); code != 2 || !strings.Contains(errOut, "contextfill --help") {
 			t.Errorf("%v: exit %d, stderr %q", args, code, errOut)
 		}
@@ -186,6 +186,26 @@ func TestHookAnswersACommitWithTheFill(t *testing.T) {
 	}
 	if !strings.Contains(out, `"additionalContext":"contextfill: 45% of 1M`) || !strings.Contains(out, "over the 40% limit") {
 		t.Errorf("stdout = %q", out)
+	}
+}
+
+func TestHookJudgesTheMainThreadAgainstMainMax(t *testing.T) {
+	config := home(t, "claude-opus-5-5[1m]", 300_000)
+	transcript := filepath.Join(config, "projects", "-Users-someone-git-App", sessionID+".jsonl")
+	payload, _ := json.Marshal(map[string]any{
+		"transcript_path": transcript, "tool_name": "Bash",
+		"tool_input": map[string]any{"command": "git commit -F m"},
+	})
+
+	code, out, errOut := invokeWithInput(nil, string(payload), "hook", "--max", "40", "--main-max=25")
+	if code != 0 || !strings.Contains(out, "over the 25% limit") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want the main thread over --main-max 25", code, out, errOut)
+	}
+}
+
+func TestHelpDocumentsMainMax(t *testing.T) {
+	if _, out, _ := invoke(nil, "--help"); !strings.Contains(out, "--main-max") {
+		t.Errorf("--help doesn't mention --main-max:\n%s", out)
 	}
 }
 

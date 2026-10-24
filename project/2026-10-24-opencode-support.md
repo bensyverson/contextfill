@@ -18,6 +18,8 @@
 
 The shared rules now draw two lines: a subagent hands off past 40% of its context, and the integrator stops delegating at 25% (`agents-md` `942f807`). The hook has one `--max`, so `contextfill hook --max 40` nudges the main thread late, and `--max 25` would tell agents to hand off early. A subagent's payload carries `agent_id` and the main thread's doesn't, so the hook can tell them apart: add `--main-max <percent>` for payloads without an `agent_id`, falling back to `--max`, then change the hook in `~/.claude/settings.json` to `contextfill hook --max 40 --main-max 25`. Red first, in `hook/hook_test.go` and `cmd/contextfill/run_test.go`.
 
+> **2026-10-24, later:** done as planned; `--main-max` is accepted only by `contextfill hook`. Tracked in [the plan](2026-10-24-plan-hook-limits-and-opencode.md).
+
 ## Shape
 
 Keep `transcript` Claude Code's reader, and add an `opencode` package beside it behind one small interface: find a session, latest reading, list agents. `cmd/contextfill` picks the reader from the environment (`CLAUDECODE=1`, or OpenCode's own marker) and takes a `--harness` override. Fixtures stay synthetic: the repo is public, and transcripts are private.

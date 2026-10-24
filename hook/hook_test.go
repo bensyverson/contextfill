@@ -66,7 +66,7 @@ func TestAfterACommitItReportsTheMainThreadsFill(t *testing.T) {
 	transcript := filepath.Join(t.TempDir(), sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
 
-	out, err := hook.Respond(strings.NewReader(input(transcript, "", "cd x && git commit -F m")), 0)
+	out, err := hook.Respond(strings.NewReader(input(transcript, "", "cd x && git commit -F m")), hook.Limits{})
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestInASubagentItReportsTheAgentsOwnFill(t *testing.T) {
 	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
 	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-5-5", 90_000, true))
 
-	out, err := hook.Respond(strings.NewReader(input(transcript, "a7f0b3d9", "git commit -F m")), 0)
+	out, err := hook.Respond(strings.NewReader(input(transcript, "a7f0b3d9", "git commit -F m")), hook.Limits{})
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestOverTheLimitItSaysToWriteTheHandoff(t *testing.T) {
 	transcript := filepath.Join(t.TempDir(), sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5[1m]", 450_000, false))
 
-	out, err := hook.Respond(strings.NewReader(input(transcript, "", "git commit -F m")), 40)
+	out, err := hook.Respond(strings.NewReader(input(transcript, "", "git commit -F m")), hook.Limits{Max: 40})
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
@@ -103,21 +103,54 @@ func TestOverTheLimitItSaysToWriteTheHandoff(t *testing.T) {
 	}
 }
 
+func TestTheMainThreadIsJudgedAgainstMainMax(t *testing.T) {
+	transcript := filepath.Join(t.TempDir(), sessionID+".jsonl")
+	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
+
+	out, err := hook.Respond(strings.NewReader(input(transcript, "", "git commit -F m")), hook.Limits{Max: 40, MainMax: 25})
+	if err != nil {
+		t.Fatalf("Respond: %v", err)
+	}
+	if got := context(t, out); !strings.Contains(got, "over the 25% limit") {
+		t.Errorf("additionalContext = %q, want the main thread's 30%% over its 25%% limit", got)
+	}
+}
+
+func TestASubagentIsJudgedAgainstMaxEvenWithMainMax(t *testing.T) {
+	dir := t.TempDir()
+	transcript := filepath.Join(dir, sessionID+".jsonl")
+	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
+	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-5-5", 60_000, true))
+
+	payload := input(transcript, "a7f0b3d9", "git commit -F m")
+	out, err := hook.Respond(strings.NewReader(payload), hook.Limits{Max: 40, MainMax: 25})
+	if err != nil {
+		t.Fatalf("Respond: %v", err)
+	}
+	if got := context(t, out); strings.Contains(got, "limit") {
+		t.Errorf("additionalContext = %q, want no advice for the agent's 30%% under --max 40", got)
+	}
+	out, _ = hook.Respond(strings.NewReader(payload), hook.Limits{Max: 20, MainMax: 50})
+	if got := context(t, out); !strings.Contains(got, "over the 20% limit") {
+		t.Errorf("additionalContext = %q, want the agent's 30%% over --max 20", got)
+	}
+}
+
 func TestACommandWithoutACommitGetsNoResponse(t *testing.T) {
 	transcript := filepath.Join(t.TempDir(), sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5", 1000, false))
 
-	if out, _ := hook.Respond(strings.NewReader(input(transcript, "", "git commit -F m")), 0); len(out) == 0 {
+	if out, _ := hook.Respond(strings.NewReader(input(transcript, "", "git commit -F m")), hook.Limits{}); len(out) == 0 {
 		t.Fatal("a commit got no response, so silence below proves nothing")
 	}
-	out, err := hook.Respond(strings.NewReader(input(transcript, "", "git status && echo 'git commit'")), 0)
+	out, err := hook.Respond(strings.NewReader(input(transcript, "", "git status && echo 'git commit'")), hook.Limits{})
 	if err != nil || len(out) != 0 {
 		t.Errorf("Respond = %q, %v; want no output", out, err)
 	}
 }
 
 func TestAnUnreadableTranscriptIsAnError(t *testing.T) {
-	_, err := hook.Respond(strings.NewReader(input("/no/such/transcript.jsonl", "", "git commit")), 0)
+	_, err := hook.Respond(strings.NewReader(input("/no/such/transcript.jsonl", "", "git commit")), hook.Limits{})
 	if err == nil {
 		t.Error("Respond succeeded with no transcript")
 	}
