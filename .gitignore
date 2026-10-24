@@ -1,0 +1,19 @@
+# Binary
+/contextfill
+
+# Go
+vendor/
+
+# OS
+.DS_Store
+
+# Claude Code: per-machine state. Shared config stays tracked.
+.claude/worktrees/
+.claude/settings.local.json
+.claude/.cc-writes/
+
+# job
+# Jobs cache and its sidecars — disposable, rebuilt from .jobs/log
+.jobs.db*
+# This machine's replica id, identity and focus
+.jobs/local.json
