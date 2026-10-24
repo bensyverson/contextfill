@@ -41,8 +41,13 @@ func write(t *testing.T, path, body string) {
 
 // invoke runs the command with an environment of only the given variables.
 func invoke(env map[string]string, args ...string) (code int, stdout, stderr string) {
+	return invokeWithInput(env, "", args...)
+}
+
+// invokeWithInput is invoke with the given standard input.
+func invokeWithInput(env map[string]string, stdin string, args ...string) (code int, stdout, stderr string) {
 	var out, errOut bytes.Buffer
-	code = run(args, func(name string) string { return env[name] }, &out, &errOut)
+	code = run(args, func(name string) string { return env[name] }, strings.NewReader(stdin), &out, &errOut)
 	return code, out.String(), errOut.String()
 }
 
@@ -164,5 +169,43 @@ func TestHelpNeedsNoSession(t *testing.T) {
 	code, out, _ := invoke(map[string]string{}, "--help")
 	if code != 0 || !strings.Contains(out, "contextfill --agents") || !strings.Contains(out, "--max") {
 		t.Errorf("exit %d, stdout %q", code, out)
+	}
+}
+
+func TestHookAnswersACommitWithTheFill(t *testing.T) {
+	config := home(t, "claude-opus-5-5[1m]", 450_000)
+	transcript := filepath.Join(config, "projects", "-Users-someone-git-App", sessionID+".jsonl")
+	payload, _ := json.Marshal(map[string]any{
+		"transcript_path": transcript, "tool_name": "Bash",
+		"tool_input": map[string]any{"command": "git add -A && git commit -F m"},
+	})
+
+	code, out, errOut := invokeWithInput(map[string]string{}, string(payload), "hook", "--max", "40")
+	if code != 0 {
+		t.Fatalf("exit %d, stderr %q", code, errOut)
+	}
+	if !strings.Contains(out, `"additionalContext":"contextfill: 45% of 1M`) || !strings.Contains(out, "over the 40% limit") {
+		t.Errorf("stdout = %q", out)
+	}
+}
+
+func TestHookIsSilentForOtherCommands(t *testing.T) {
+	config := home(t, "claude-opus-5-5", 1000)
+	transcript := filepath.Join(config, "projects", "-Users-someone-git-App", sessionID+".jsonl")
+	commit, _ := json.Marshal(map[string]any{"transcript_path": transcript, "tool_name": "Bash", "tool_input": map[string]any{"command": "git commit"}})
+	status, _ := json.Marshal(map[string]any{"transcript_path": transcript, "tool_name": "Bash", "tool_input": map[string]any{"command": "git status"}})
+
+	if _, out, _ := invokeWithInput(nil, string(commit), "hook"); out == "" {
+		t.Fatal("a commit got no answer, so silence below proves nothing")
+	}
+	if code, out, _ := invokeWithInput(nil, string(status), "hook"); code != 0 || out != "" {
+		t.Errorf("exit %d, stdout %q; want silence", code, out)
+	}
+}
+
+func TestHookReportsABrokenPayloadWithoutBlocking(t *testing.T) {
+	code, out, errOut := invokeWithInput(nil, "not json", "hook")
+	if code == 0 || code == 2 || out != "" || !strings.Contains(errOut, "contextfill hook") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want a non-blocking error naming the hook", code, out, errOut)
 	}
 }

@@ -13,4 +13,4 @@ const (
 	exitEnvironment = 5 // no session to read
 )
 
-func main() { os.Exit(run(os.Args[1:], os.Getenv, os.Stdout, os.Stderr)) }
+func main() { os.Exit(run(os.Args[1:], os.Getenv, os.Stdin, os.Stdout, os.Stderr)) }

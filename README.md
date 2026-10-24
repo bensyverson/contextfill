@@ -32,6 +32,25 @@ $ contextfill --agents
 
 `--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session. `contextfill --help` has the details.
 
+## After every commit
+
+As a Claude Code hook, it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "contextfill hook --max 40", "timeout": 10 }]
+      }
+    ]
+  }
+}
+```
+
+Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a nudge to write the handoff once the fill passes 40%. Any other command gets no output.
+
 ## How it works
 
 Claude Code keeps each session's transcript at `~/.claude/projects/<project>/<session id>.jsonl` (under `$CLAUDE_CONFIG_DIR` if that's set), and sets `CLAUDE_CODE_SESSION_ID` in every shell it starts. Each assistant turn records the tokens it was sent. The fill is the input side of the latest turn (`input_tokens + cache_read_input_tokens + cache_creation_input_tokens`) divided by the model's window: a million tokens when the requested model carries the `[1m]` suffix, otherwise 200k. Subagents' transcripts sit beside it in `<session id>/subagents/`.

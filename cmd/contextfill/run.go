@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/bensyverson/contextfill/hook"
 	"github.com/bensyverson/contextfill/transcript"
 )
 
@@ -37,7 +38,7 @@ type agentReport struct {
 
 // run is the whole command, with its environment passed in so tests can drive
 // it. It returns the exit code.
-func run(args []string, env func(string) string, stdout, stderr io.Writer) int {
+func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr io.Writer) int {
 	o, err := parse(args)
 	if err != nil {
 		fmt.Fprintf(stderr, "contextfill: %v\nRun contextfill --help for usage.\n", err)
@@ -45,6 +46,16 @@ func run(args []string, env func(string) string, stdout, stderr io.Writer) int {
 	}
 	if o.help {
 		fmt.Fprint(stdout, helpText)
+		return exitOK
+	}
+	if o.hook {
+		out, err := hook.Respond(stdin, o.maxPercent)
+		if err != nil {
+			// Not exit 2, which would block the tool call the hook follows.
+			fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
+			return exitTarget
+		}
+		stdout.Write(out)
 		return exitOK
 	}
 
@@ -111,7 +122,7 @@ func projectsDir(env func(string) string) (string, error) {
 }
 
 func writeText(w io.Writer, id string, r transcript.Reading, agents []transcript.Agent, o options) {
-	fmt.Fprintf(w, "%s · %s tokens · %s · session %s\n", fillOf(r), tokens(r.Used), r.Model, short(id))
+	fmt.Fprintf(w, "%s · %s tokens · %s · session %s\n", r.Summary(), transcript.Tokens(r.Used), r.Model, short(id))
 	if !o.agents {
 		return
 	}
@@ -123,7 +134,7 @@ func writeText(w io.Writer, id string, r transcript.Reading, agents []transcript
 	for _, a := range agents {
 		fill := "no reading yet"
 		if a.Reading.Window > 0 {
-			fill = fillOf(a.Reading)
+			fill = a.Reading.Summary()
 		}
 		status := "running"
 		if a.Finished {
@@ -160,6 +171,11 @@ Usage:
   contextfill --agents         ...plus one row per subagent: id, fill, running or finished, model, task
   contextfill --max 40         exits 1 when the fill is over 40%, so a script can branch on it
   contextfill --json           the same reading, and every subagent, as JSON
+
+As a Claude Code PostToolUse hook on Bash, it tells the model its fill after
+every git commit (a subagent gets its own), and stays silent otherwise:
+
+  contextfill hook --max 40    reads the hook payload on stdin
 
 Exit codes: 0 ok · 1 over --max · 2 usage error · 4 transcript missing or
 unreadable · 5 no session to read.

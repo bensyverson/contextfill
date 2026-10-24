@@ -8,7 +8,9 @@ import (
 
 // options is a parsed command line.
 type options struct {
-	help      bool
+	help bool
+	// hook means answer a Claude Code PostToolUse hook from stdin.
+	hook      bool
 	agents    bool
 	json      bool
 	sessionID string
@@ -43,10 +45,14 @@ func parse(args []string) (options, error) {
 				return o, fmt.Errorf("--max takes a percentage from 1 to 100, not %q", value)
 			}
 			o.maxPercent = percent
+		case arg == "hook" && !o.hook && o.sessionID == "":
+			o.hook = true
 		case strings.HasPrefix(arg, "-"):
 			return o, fmt.Errorf("unknown flag %s", arg)
-		case o.sessionID == "":
+		case o.sessionID == "" && !o.hook:
 			o.sessionID = arg
+		case o.hook:
+			return o, fmt.Errorf("hook reads its session from the payload on stdin, not %s", arg)
 		default:
 			return o, fmt.Errorf("one session id at a time; got %s and %s", o.sessionID, arg)
 		}

@@ -35,7 +35,7 @@ type meta struct {
 // sessionPath, in id order. They live beside it, in
 // <session id>/subagents/agent-<id>.jsonl with an agent-<id>.meta.json.
 func Agents(sessionPath string) ([]Agent, error) {
-	dir := filepath.Join(strings.TrimSuffix(sessionPath, ".jsonl"), "subagents")
+	dir := subagentsDir(sessionPath)
 	paths, err := filepath.Glob(filepath.Join(dir, "agent-*.jsonl"))
 	if err != nil {
 		return nil, fmt.Errorf("searching %s: %w", dir, err)
@@ -62,4 +62,20 @@ func Agents(sessionPath string) ([]Agent, error) {
 		agents = append(agents, agent)
 	}
 	return agents, nil
+}
+
+// LatestOfAgent returns the latest reading of one subagent of the session
+// whose transcript is at sessionPath.
+func LatestOfAgent(sessionPath, agentID string) (Reading, error) {
+	return latest(agentPath(sessionPath, agentID), true)
+}
+
+// agentPath is where a subagent's transcript lives:
+// <session id>/subagents/agent-<id>.jsonl beside the session's own.
+func agentPath(sessionPath, agentID string) string {
+	return filepath.Join(subagentsDir(sessionPath), "agent-"+agentID+".jsonl")
+}
+
+func subagentsDir(sessionPath string) string {
+	return filepath.Join(strings.TrimSuffix(sessionPath, ".jsonl"), "subagents")
 }

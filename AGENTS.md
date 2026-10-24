@@ -2,7 +2,7 @@ IMPORTANT: As you implement features, keep the [README](README.md) and `contextf
 
 ## Overview
 
-You are working on `contextfill`, a small Go CLI that tells a Claude Code session how full its context window is, so an agent can check before it starts more work. It reads the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`) and sums the input side of the latest assistant turn. `transcript/` is the library: finding a session, reading its latest usage, listing its subagents. `cmd/contextfill/` is the thin CLI over it.
+You are working on `contextfill`, a small Go CLI that tells a Claude Code session how full its context window is, so an agent can check before it starts more work. It reads the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`) and sums the input side of the latest assistant turn. `transcript/` is the library: finding a session, reading its latest usage, listing its subagents. `hook/` answers Claude Code's PostToolUse hook, telling the model its fill after a commit. `cmd/contextfill/` is the thin CLI over both.
 
 ## Documentation
 
@@ -12,7 +12,7 @@ You are working on `contextfill`, a small Go CLI that tells a Claude Code sessio
 ## Ground rules
 
 - **This repo is public, and transcripts are private.** Never commit a real transcript or anything lifted from one — prompts, file paths, task descriptions, token figures. Test fixtures are synthetic and built in the test (`transcript/fixture_test.go`).
-- **The transcript format is Claude Code's, not ours, and it is undocumented.** It reads only `type`, `isSidechain`, `requestedModel`, `message.model` and `message.usage` from each line, and each subagent's `.meta.json` beside its transcript. When Claude Code changes one, fix the reader and add a fixture case for the new shape; never guess past a field that's missing.
+- **The transcript format is Claude Code's, not ours, and it is undocumented.** It reads only `type`, `isSidechain`, `requestedModel`, `message.model` and `message.usage` from each line, each subagent's `.meta.json` beside its transcript, and from a hook payload `transcript_path`, `agent_id`, `tool_name` and `tool_input.command`. When Claude Code changes one, fix the reader and add a fixture case for the new shape; never guess past a field that's missing.
 - **A bare `contextfill` reports, it doesn't print a primer.** This breaks the shared CLI rule on purpose: the tool has one read, and the point is to run it often. `--help` is the primer.
 - **Build and install:** `make install` puts `contextfill` in `$GOBIN`; `make hooks` once per clone installs the pre-commit hook (go vet, go fix, gofmt, go mod tidy, tests, `agents check`).
 
