@@ -9,6 +9,8 @@
 
 ## To find out, in order
 
+> **2026-10-24, later:** answered in [2026-10-24-opencode-findings.md](2026-10-24-opencode-findings.md). The guess in 1 was wrong: there are no per-message JSON files. Sessions live in a SQLite database, and plugin models' windows are known only to the running server.
+
 1. **Where a session's messages live** and which file holds the latest assistant turn's token counts. Expect per-message JSON with input, output and cache read/write counts; confirm the field names from a real file rather than from memory.
 2. **How a shell inside OpenCode names its session**, the equivalent of `CLAUDE_CODE_SESSION_ID`. If there's no variable, find the most reliable fallback, and say what it costs (for example "the most recently written session in this project" breaks with parallel sessions).
 3. **How it names the model and its window**, the equivalent of Claude Code's `[1m]` suffix.
