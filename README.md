@@ -34,7 +34,7 @@ $ contextfill --agents
 
 ## After every commit
 
-As a Claude Code hook (OpenCode's equivalent, a plugin, isn't built yet), it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
+As a Claude Code hook or an OpenCode plugin, it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
 
 ```json
 {
@@ -50,6 +50,15 @@ As a Claude Code hook (OpenCode's equivalent, a plugin, isn't built yet), it tel
 ```
 
 Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a nudge to write the handoff once the fill passes 40%. `--main-max 25` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Any other command gets no output.
+
+In OpenCode, the plugin does the same. Link it into OpenCode's global plugins directory, then tell OpenCode's background server to load it:
+
+```
+ln -s "$PWD/opencode/plugin/contextfill.js" ~/.config/opencode/plugins/contextfill.js
+opencode reload
+```
+
+The limits (`--max 40 --main-max 25`) are at the top of [the plugin](opencode/plugin/contextfill.js); set `CONTEXTFILL` to the binary's full path if `contextfill` isn't on the `PATH` OpenCode runs with. A subagent's session is judged against `--max`, the main session against `--main-max`.
 
 ## How it works
 

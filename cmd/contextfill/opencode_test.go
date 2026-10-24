@@ -127,3 +127,24 @@ func TestAnAgentWithAReadingButNoWindowIsNotWaiting(t *testing.T) {
 		t.Errorf("listing = %q, want the agent's reading shown as window unknown", out.String())
 	}
 }
+
+func TestHookForOpenCodeAnswersACommitInPlainText(t *testing.T) {
+	env := map[string]string{"XDG_STATE_HOME": openCodeState(t, 262_144, 1_048_576)}
+	commit, _ := json.Marshal(map[string]any{"tool": "shell", "sessionID": openCodeSession, "input": map[string]any{"command": "git commit -F m"}})
+	code, out, errOut := invokeWithInput(env, string(commit), "hook", "--harness", "opencode", "--max", "40", "--main-max", "20")
+	if code != 0 || out != "contextfill: 25% of 1M · 262.1k tokens in context after this commit. That is over the 20% limit: finish what's in flight and write the handoff rather than starting new work.\n" {
+		t.Errorf("exit %d, stdout %q, stderr %q", code, out, errOut)
+	}
+	status, _ := json.Marshal(map[string]any{"tool": "shell", "sessionID": openCodeSession, "input": map[string]any{"command": "git status"}})
+	if code, out, _ := invokeWithInput(env, string(status), "hook", "--harness", "opencode"); code != 0 || out != "" {
+		t.Errorf("non-commit: exit %d, stdout %q; want silence", code, out)
+	}
+}
+
+func TestHookForOpenCodeWithNoServerDoesNotBlock(t *testing.T) {
+	env := map[string]string{"XDG_STATE_HOME": t.TempDir()}
+	code, out, errOut := invokeWithInput(env, `{"tool":"shell","sessionID":"ses_x","input":{"command":"git commit"}}`, "hook", "--harness", "opencode")
+	if code == 0 || code == 2 || out != "" || !strings.Contains(errOut, "contextfill hook") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want a non-blocking error naming the hook", code, out, errOut)
+	}
+}

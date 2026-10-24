@@ -55,14 +55,7 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 		return exitOK
 	}
 	if o.hook {
-		out, err := hook.Respond(stdin, hook.Limits{Max: o.maxPercent, MainMax: o.mainMaxPercent})
-		if err != nil {
-			// Not exit 2, which would block the tool call the hook follows.
-			fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
-			return exitTarget
-		}
-		stdout.Write(out)
-		return exitOK
+		return runHook(o, env, stdin, stdout, stderr)
 	}
 
 	harness := o.harness
@@ -110,6 +103,36 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 			fmt.Fprintf(stdout, "over the %s%% limit: write the handoff before starting more work\n", trimmed(o.maxPercent))
 		}
 		return exitOverMax
+	}
+	return exitOK
+}
+
+// runHook answers a commit hook: Claude Code's PostToolUse payload by
+// default, or the OpenCode plugin's with --harness opencode. Its errors never
+// exit 2, which would make Claude Code block the tool call the hook follows.
+func runHook(o options, env func(string) string, stdin io.Reader, stdout, stderr io.Writer) int {
+	limits := hook.Limits{Max: o.maxPercent, MainMax: o.mainMaxPercent}
+	if o.harness != fill.OpenCode {
+		out, err := hook.Respond(stdin, limits)
+		if err != nil {
+			fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
+			return exitTarget
+		}
+		stdout.Write(out)
+		return exitOK
+	}
+	client, _, err := openCode(env)
+	if err != nil {
+		fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
+		return exitEnvironment
+	}
+	text, err := hook.RespondOpenCode(stdin, limits, client)
+	if err != nil {
+		fmt.Fprintf(stderr, "contextfill hook: %v\n", err)
+		return exitTarget
+	}
+	if text != "" {
+		fmt.Fprintln(stdout, text)
 	}
 	return exitOK
 }
@@ -187,14 +210,18 @@ $CLAUDE_CONFIG_DIR). OpenCode: asks its running server, found through
 own clients do. A model OpenCode doesn't know the window of reads "window
 unknown", and --max can't judge it.
 
-As a Claude Code PostToolUse hook on Bash, it tells the model its fill after
-every git commit (a subagent gets its own), and stays silent otherwise:
+As a Claude Code PostToolUse hook on Bash, or through its OpenCode plugin, it
+tells the model its fill after every git commit (a subagent gets its own), and
+stays silent otherwise:
 
   contextfill hook --max 40    reads the hook payload on stdin; past 40% it says
                                to finish what's in flight and write the handoff
   contextfill hook --max 40 --main-max 25
                                the same, but the main thread's limit is 25%
                                (--main-max falls back to --max)
+  contextfill hook --harness opencode --max 40 --main-max 25
+                               answers OpenCode's plugin (opencode/plugin) in
+                               plain text, for the shell tool's commits
 
 Exit codes: 0 ok · 1 over --max · 2 usage error · 4 session missing or
 unreadable, or --max against an unknown window · 5 no session to read, or

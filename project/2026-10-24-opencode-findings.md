@@ -32,6 +32,14 @@ Answers the four questions in [2026-10-24-opencode-support.md](2026-10-24-openco
 ## 4. Subagents and hooks
 
 - **Subagents are child sessions:** `session_v2.parent_id` is the parent, `agent` is the subagent type (`explore`, …), and `title` is its task. A trailing `idle` message marks it finished. Listing agents is `select … from session_v2 where parent_id = ?`.
+> **Corrected 2026-10-24, while building the plugin:** the next bullet describes the v1 plugin API, from stale type definitions, and is wrong for 2.1.4. In v2:
+> - A plugin is a default export `{ id, setup(ctx) }` (`Plugin.define` from `@opencode/plugin` is the identity, so no import is needed).
+> - It hooks `ctx.tool.hook("execute.after", event => …)`. The event carries `tool`, `sessionID`, `agent`, `messageID`, `id`, `input` and `status`, plus `result` (`{output, content, metadata}`) when the status is `completed`.
+> - The shell tool is named `shell`, not `bash`, and `input.command` is its command.
+> - Replacing `event.result` with a `content` array that has an extra `{type: "text", text}` item reaches the model; verified live.
+> - Plugins load from `.opencode/plugins/` or `~/.config/opencode/plugins/` (plural). The long-lived background server keeps a project's plugins loaded until `opencode reload`.
+> - Sources: [opencode.ai/v2/docs/build/plugins](https://opencode.ai/v2/docs/build/plugins/) and the `@opencode/plugin` 2.1.4 type definitions on npm.
+
 - **No shell-command hooks.** Extension is through JavaScript plugins (`@opencode-ai/plugin`). The nearest equivalent of our PostToolUse hook is `"tool.execute.after"`, which receives `{tool, sessionID, callID, args}` and a mutable `{title, output, metadata}`. A `contextfill` hook for OpenCode would be a small plugin that shells out to `contextfill` after a committing bash call and appends the reading to `output`. Not verified: whether an appended `output` reaches the model, and whether the installed type definitions (plugin package 1.3.15, older than the 2.1.4 binary) are current. `"shell.env"` also exists, to set variables in shells.
 
 ## Decision: how to read it

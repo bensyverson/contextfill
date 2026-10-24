@@ -158,7 +158,7 @@ func TestAnUnknownSessionExitsFourAndNamesWhereItLooked(t *testing.T) {
 
 func TestUsageErrorsExitTwo(t *testing.T) {
 	env := map[string]string{"CLAUDE_CODE_SESSION_ID": sessionID}
-	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}, {"--main-max", "25"}, {"hook", "--main-max", "0"}, {"--harness", "cursor"}, {"--harness"}, {"hook", "--harness", "opencode"}} {
+	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}, {"--main-max", "25"}, {"hook", "--main-max", "0"}, {"--harness", "cursor"}, {"--harness"}, {"hook", "--harness", "cursor"}} {
 		if code, _, errOut := invoke(env, args...); code != 2 || !strings.Contains(errOut, "contextfill --help") {
 			t.Errorf("%v: exit %d, stderr %q", args, code, errOut)
 		}

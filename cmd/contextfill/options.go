@@ -79,9 +79,6 @@ func parse(args []string) (options, error) {
 	if o.mainMaxPercent > 0 && !o.hook {
 		return o, fmt.Errorf("--main-max applies only to contextfill hook; a bare read is always the main thread, so use --max")
 	}
-	if o.harness != "" && o.hook {
-		return o, fmt.Errorf("hook answers Claude Code's PostToolUse payload, which names its own transcript; it takes no --harness")
-	}
 	return o, nil
 }
 

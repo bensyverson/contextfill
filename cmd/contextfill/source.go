@@ -22,16 +22,12 @@ type target struct {
 // open returns the reader for the harness. An error is an environment error.
 func open(h fill.Harness, env func(string) string) (target, error) {
 	if h == fill.OpenCode {
-		path, err := opencode.ServicePath(env)
-		if err != nil {
-			return target{}, err
-		}
-		service, err := opencode.LoadService(path)
+		client, service, err := openCode(env)
 		if err != nil {
 			return target{}, err
 		}
 		return target{
-			source: opencode.NewClient(service),
+			source: client,
 			where:  "OpenCode's server at " + service.URL + " serves its sessions.",
 			list:   "opencode session list",
 		}, nil
@@ -45,6 +41,19 @@ func open(h fill.Harness, env func(string) string) (target, error) {
 		where:  "Transcripts are " + projects + "/<project>/<session-id>.jsonl.",
 		list:   "ls " + projects + "/*/",
 	}, nil
+}
+
+// openCode returns a client for OpenCode's running server.
+func openCode(env func(string) string) (*opencode.Client, opencode.Service, error) {
+	path, err := opencode.ServicePath(env)
+	if err != nil {
+		return nil, opencode.Service{}, err
+	}
+	service, err := opencode.LoadService(path)
+	if err != nil {
+		return nil, opencode.Service{}, err
+	}
+	return opencode.NewClient(service), service, nil
 }
 
 // projectsDir is where Claude Code keeps transcripts: $CLAUDE_CONFIG_DIR, or

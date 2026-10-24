@@ -1,5 +1,6 @@
-// Package hook answers Claude Code's PostToolUse hook: after a Bash call that
-// commits, it tells the model how full its context window is.
+// Package hook tells the model how full its context window is after a shell
+// command that commits: in Claude Code as a PostToolUse hook, in OpenCode
+// through the plugin in opencode/plugin.
 package hook
 
 import (
@@ -41,10 +42,9 @@ type Limits struct {
 	MainMax float64
 }
 
-// For returns the limit for a payload from the given agent; "" is the main
-// thread.
-func (l Limits) For(agentID string) float64 {
-	if agentID == "" && l.MainMax > 0 {
+// For returns the limit for a subagent, or for the main thread.
+func (l Limits) For(subagent bool) float64 {
+	if !subagent && l.MainMax > 0 {
 		return l.MainMax
 	}
 	return l.Max
@@ -75,14 +75,20 @@ func Respond(r io.Reader, limits Limits) ([]byte, error) {
 		return nil, err
 	}
 
+	var out response
+	out.HookSpecificOutput.HookEventName = "PostToolUse"
+	out.HookSpecificOutput.AdditionalContext = message(reading, limits.For(in.AgentID != ""))
+	return json.Marshal(out)
+}
+
+// message tells the model its fill after a commit, adding handoff advice once
+// the fill passes maxPercent; 0 means no limit.
+func message(reading fill.Reading, maxPercent float64) string {
 	text := fmt.Sprintf("contextfill: %s · %s tokens in context after this commit.",
 		reading.Summary(), fill.Tokens(reading.Used))
-	if maxPercent := limits.For(in.AgentID); maxPercent > 0 && reading.Fill()*100 > maxPercent {
+	if maxPercent > 0 && reading.Fill()*100 > maxPercent {
 		text += fmt.Sprintf(" That is over the %s%% limit: finish what's in flight and write the handoff rather than starting new work.",
 			strconv.FormatFloat(maxPercent, 'f', -1, 64))
 	}
-	var out response
-	out.HookSpecificOutput.HookEventName = "PostToolUse"
-	out.HookSpecificOutput.AdditionalContext = text
-	return json.Marshal(out)
+	return text
 }

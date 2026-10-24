@@ -146,3 +146,20 @@ func TestServicePathFollowsXDGStateHome(t *testing.T) {
 		t.Error("ServicePath succeeded with neither HOME nor XDG_STATE_HOME")
 	}
 }
+
+func TestIsSubagentIsTrueForAChildSession(t *testing.T) {
+	f := &fake{sessions: map[string]session{
+		mainID:      {ID: mainID, Directory: dir},
+		"ses_child": {ID: "ses_child", ParentID: mainID, Directory: dir},
+	}}
+	c := opencode.NewClient(serve(t, f))
+	if sub, err := c.IsSubagent("ses_child"); err != nil || !sub {
+		t.Errorf("IsSubagent(child) = %v, %v; want true", sub, err)
+	}
+	if sub, err := c.IsSubagent(mainID); err != nil || sub {
+		t.Errorf("IsSubagent(main) = %v, %v; want false", sub, err)
+	}
+	if _, err := c.IsSubagent("ses_nope"); !errors.Is(err, fill.ErrNoSession) {
+		t.Errorf("IsSubagent(unknown) error = %v, want ErrNoSession", err)
+	}
+}

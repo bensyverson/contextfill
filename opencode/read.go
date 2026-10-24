@@ -111,6 +111,15 @@ func (c *Client) Agents(sessionID string) ([]fill.Agent, error) {
 	return agents, nil
 }
 
+// IsSubagent reports whether the session is another session's child.
+func (c *Client) IsSubagent(sessionID string) (bool, error) {
+	s, err := c.session(sessionID)
+	if err != nil {
+		return false, err
+	}
+	return s.ParentID != "", nil
+}
+
 func (c *Client) session(id string) (sessionInfo, error) {
 	var answer struct {
 		Data sessionInfo `json:"data"`
