@@ -133,7 +133,7 @@ func TestJSONCarriesTheReadingAndAgents(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("stdout is not JSON: %v\n%s", err, out)
 	}
-	if got.Session != sessionID || got.Used != 250_000 || got.Window != 1_000_000 || got.Fill != 0.25 || got.Agents == nil {
+	if got.Session != sessionID || got.Used != 250_000 || got.Window != 1_000_000 || got.Fill == nil || *got.Fill != 0.25 || got.Agents == nil {
 		t.Errorf("report = %+v", got)
 	}
 }
@@ -158,7 +158,7 @@ func TestAnUnknownSessionExitsFourAndNamesWhereItLooked(t *testing.T) {
 
 func TestUsageErrorsExitTwo(t *testing.T) {
 	env := map[string]string{"CLAUDE_CODE_SESSION_ID": sessionID}
-	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}, {"--main-max", "25"}, {"hook", "--main-max", "0"}} {
+	for _, args := range [][]string{{"--max"}, {"--max", "lots"}, {"--frobnicate"}, {"a", "b"}, {"--main-max", "25"}, {"hook", "--main-max", "0"}, {"--harness", "cursor"}, {"--harness"}, {"hook", "--harness", "opencode"}} {
 		if code, _, errOut := invoke(env, args...); code != 2 || !strings.Contains(errOut, "contextfill --help") {
 			t.Errorf("%v: exit %d, stderr %q", args, code, errOut)
 		}
@@ -206,6 +206,20 @@ func TestHookJudgesTheMainThreadAgainstMainMax(t *testing.T) {
 func TestHelpDocumentsMainMax(t *testing.T) {
 	if _, out, _ := invoke(nil, "--help"); !strings.Contains(out, "--main-max") {
 		t.Errorf("--help doesn't mention --main-max:\n%s", out)
+	}
+}
+
+func TestHelpDocumentsOpenCode(t *testing.T) {
+	if _, out, _ := invoke(nil, "--help"); !strings.Contains(out, "--harness") || !strings.Contains(out, "OpenCode") {
+		t.Errorf("--help doesn't cover OpenCode and --harness:\n%s", out)
+	}
+}
+
+func TestJSONNamesTheHarness(t *testing.T) {
+	config := home(t, "claude-opus-5-5[1m]", 234515)
+	_, out, _ := invoke(map[string]string{"CLAUDE_CONFIG_DIR": config, "CLAUDE_CODE_SESSION_ID": sessionID}, "--json")
+	if !strings.Contains(out, `"harness": "claude"`) {
+		t.Errorf("--json = %s, want harness claude", out)
 	}
 }
 

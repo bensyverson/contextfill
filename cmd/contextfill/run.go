@@ -5,35 +5,41 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/bensyverson/contextfill/fill"
 	"github.com/bensyverson/contextfill/hook"
-	"github.com/bensyverson/contextfill/transcript"
+	"github.com/bensyverson/contextfill/opencode"
 )
 
-// sessionEnv is the variable Claude Code sets to the running session's id in
-// every shell it starts.
-const sessionEnv = "CLAUDE_CODE_SESSION_ID"
-
-// report is the --json shape.
+// report is the --json shape. Fill is null when the window is unknown.
 type report struct {
+	Harness fill.Harness  `json:"harness"`
 	Session string        `json:"session"`
 	Model   string        `json:"model"`
 	Used    int           `json:"used"`
 	Window  int           `json:"window"`
-	Fill    float64       `json:"fill"`
+	Fill    *float64      `json:"fill"`
 	Agents  []agentReport `json:"agents"`
 }
 
 type agentReport struct {
-	ID          string  `json:"id"`
-	Description string  `json:"description"`
-	Model       string  `json:"model"`
-	Finished    bool    `json:"finished"`
-	Used        int     `json:"used"`
-	Window      int     `json:"window"`
-	Fill        float64 `json:"fill"`
+	ID          string   `json:"id"`
+	Description string   `json:"description"`
+	Model       string   `json:"model"`
+	Finished    bool     `json:"finished"`
+	Used        int      `json:"used"`
+	Window      int      `json:"window"`
+	Fill        *float64 `json:"fill"`
+}
+
+// fillOf is a reading's fill for --json: null when its window is unknown.
+func fillOf(r fill.Reading) *float64 {
+	if !r.HasWindow() {
+		return nil
+	}
+	f := r.Fill()
+	return &f
 }
 
 // run is the whole command, with its environment passed in so tests can drive
@@ -59,70 +65,70 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 		return exitOK
 	}
 
-	projects, err := projectsDir(env)
+	harness := o.harness
+	if harness == "" {
+		harness = fill.Detect(env)
+	}
+	t, err := open(harness, env)
 	if err != nil {
 		fmt.Fprintf(stderr, "contextfill: %v\n", err)
 		return exitEnvironment
 	}
 	id := o.sessionID
 	if id == "" {
-		id = env(sessionEnv)
+		id = env(harness.SessionEnv())
 	}
 	if id == "" {
 		fmt.Fprintf(stderr, "contextfill: no session to read: %s is not set.\n"+
-			"Run it from a shell inside Claude Code, or name one: contextfill <session-id>.\n"+
-			"Transcripts are %s/<project>/<session-id>.jsonl.\n", sessionEnv, projects)
+			"Run it from a shell inside %s, or name one: contextfill <session-id>.\n%s\n",
+			harness.SessionEnv(), harnessName(harness), t.where)
 		return exitEnvironment
 	}
 
-	path, err := transcript.Find(projects, id)
+	reading, err := t.source.Latest(id)
 	if err != nil {
-		fmt.Fprintf(stderr, "contextfill: %v\nList the sessions there with: ls %s/*/\n", err, projects)
-		return exitTarget
+		return readFailed(stderr, t, err)
 	}
-	reading, err := transcript.Latest(path)
-	if err != nil {
-		fmt.Fprintf(stderr, "contextfill: %v\n", err)
-		return exitTarget
-	}
-	var agents []transcript.Agent
+	var agents []fill.Agent
 	if o.agents || o.json {
-		if agents, err = transcript.Agents(path); err != nil {
-			fmt.Fprintf(stderr, "contextfill: %v\n", err)
-			return exitTarget
+		if agents, err = t.source.Agents(id); err != nil {
+			return readFailed(stderr, t, err)
 		}
 	}
 
-	over := o.maxPercent > 0 && reading.Fill()*100 > o.maxPercent
 	if o.json {
-		writeJSON(stdout, id, reading, agents)
+		writeJSON(stdout, harness, id, reading, agents)
 	} else {
-		writeText(stdout, id, reading, agents, o)
-		if over {
+		writeText(stdout, display(harness, id), reading, agents, o)
+	}
+	if o.maxPercent > 0 && !reading.HasWindow() {
+		fmt.Fprintf(stderr, "contextfill: can't judge --max: %s's window is unknown to %s.\n", reading.Model, harnessName(harness))
+		return exitTarget
+	}
+	if o.maxPercent > 0 && reading.Fill()*100 > o.maxPercent {
+		if !o.json {
 			fmt.Fprintf(stdout, "over the %s%% limit: write the handoff before starting more work\n", trimmed(o.maxPercent))
 		}
-	}
-	if over {
 		return exitOverMax
 	}
 	return exitOK
 }
 
-// projectsDir is where Claude Code keeps transcripts: $CLAUDE_CONFIG_DIR, or
-// ~/.claude, then projects.
-func projectsDir(env func(string) string) (string, error) {
-	if config := env("CLAUDE_CONFIG_DIR"); config != "" {
-		return filepath.Join(config, "projects"), nil
+// readFailed reports an error reading the session and returns its exit code:
+// a harness that isn't running is the environment, anything else the target.
+func readFailed(stderr io.Writer, t target, err error) int {
+	fmt.Fprintf(stderr, "contextfill: %v\n", err)
+	switch {
+	case errors.Is(err, opencode.ErrNoServer):
+		return exitEnvironment
+	case errors.Is(err, fill.ErrNoSession):
+		fmt.Fprintf(stderr, "List the sessions with: %s\n", t.list)
 	}
-	home := env("HOME")
-	if home == "" {
-		return "", errors.New("neither CLAUDE_CONFIG_DIR nor HOME is set, so there is nowhere to look for transcripts")
-	}
-	return filepath.Join(home, ".claude", "projects"), nil
+	return exitTarget
 }
 
-func writeText(w io.Writer, id string, r transcript.Reading, agents []transcript.Agent, o options) {
-	fmt.Fprintf(w, "%s · %s tokens · %s · session %s\n", r.Summary(), transcript.Tokens(r.Used), r.Model, short(id))
+func writeText(w io.Writer, id string, r fill.Reading, agents []fill.Agent, o options) {
+	fmt.Fprintf(w, "%s · %s tokens · %s · session %s\n", r.Summary(), fill.Tokens(r.Used), r.Model, id)
 	if !o.agents {
 		return
 	}
@@ -132,25 +138,25 @@ func writeText(w io.Writer, id string, r transcript.Reading, agents []transcript
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, a := range agents {
-		fill := "no reading yet"
-		if a.Reading.Window > 0 {
-			fill = a.Reading.Summary()
+		reading := "no reading yet"
+		if a.Reading.Used > 0 {
+			reading = a.Reading.Summary()
 		}
 		status := "running"
 		if a.Finished {
 			status = "finished"
 		}
-		fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\n", a.ID, fill, status, a.Model, a.Description)
+		fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\n", a.ID, reading, status, a.Model, a.Description)
 	}
 	tw.Flush()
 }
 
-func writeJSON(w io.Writer, id string, r transcript.Reading, agents []transcript.Agent) {
-	out := report{Session: id, Model: r.Model, Used: r.Used, Window: r.Window, Fill: r.Fill(), Agents: []agentReport{}}
+func writeJSON(w io.Writer, h fill.Harness, id string, r fill.Reading, agents []fill.Agent) {
+	out := report{Harness: h, Session: id, Model: r.Model, Used: r.Used, Window: r.Window, Fill: fillOf(r), Agents: []agentReport{}}
 	for _, a := range agents {
 		out.Agents = append(out.Agents, agentReport{
 			ID: a.ID, Description: a.Description, Model: a.Model, Finished: a.Finished,
-			Used: a.Reading.Used, Window: a.Reading.Window, Fill: a.Reading.Fill(),
+			Used: a.Reading.Used, Window: a.Reading.Window, Fill: fillOf(a.Reading),
 		})
 	}
 	enc := json.NewEncoder(w)
@@ -158,19 +164,28 @@ func writeJSON(w io.Writer, id string, r transcript.Reading, agents []transcript
 	enc.Encode(out)
 }
 
-const helpText = `contextfill — how full is this Claude Code session's context window?
+const helpText = `contextfill — how full is this agent session's context window?
 
-Reads the session's transcript under ~/.claude/projects (or $CLAUDE_CONFIG_DIR)
-and reports the tokens its latest turn carried, out of the model's window.
-With no session id it reads the current one, from $CLAUDE_CODE_SESSION_ID.
+Reports the tokens a Claude Code or OpenCode session's latest turn carried,
+out of its model's window. With no session id it reads the current one: inside
+OpenCode (OPENCODE=1) from $OPENCODE_SESSION_ID, otherwise from Claude Code's
+$CLAUDE_CODE_SESSION_ID.
 
 Usage:
-  contextfill [session-id] [--agents] [--max <percent>] [--json]
+  contextfill [session-id] [--agents] [--max <percent>] [--json] [--harness <name>]
 
   contextfill                  23% of 1M · 234.5k tokens · claude-opus-5-5[1m] · session 5f3a9c21
   contextfill --agents         ...plus one row per subagent: id, fill, running or finished, model, task
   contextfill --max 40         exits 1 when the fill is over 40%, so a script can branch on it
   contextfill --json           the same reading, and every subagent, as JSON
+  contextfill --harness opencode ses_…
+                               reads that harness's session, whatever shell this is
+
+Claude Code: reads the transcript under ~/.claude/projects (or
+$CLAUDE_CONFIG_DIR). OpenCode: asks its running server, found through
+~/.local/state/opencode/service.json (or $XDG_STATE_HOME), the way OpenCode's
+own clients do. A model OpenCode doesn't know the window of reads "window
+unknown", and --max can't judge it.
 
 As a Claude Code PostToolUse hook on Bash, it tells the model its fill after
 every git commit (a subagent gets its own), and stays silent otherwise:
@@ -181,6 +196,7 @@ every git commit (a subagent gets its own), and stays silent otherwise:
                                the same, but the main thread's limit is 25%
                                (--main-max falls back to --max)
 
-Exit codes: 0 ok · 1 over --max · 2 usage error · 4 transcript missing or
-unreadable · 5 no session to read.
+Exit codes: 0 ok · 1 over --max · 2 usage error · 4 session missing or
+unreadable, or --max against an unknown window · 5 no session to read, or
+OpenCode's server isn't running.
 `

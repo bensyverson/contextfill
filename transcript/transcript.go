@@ -8,16 +8,10 @@
 package transcript
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
-)
 
-var (
-	// ErrNoTranscript means no transcript exists for the session id.
-	ErrNoTranscript = errors.New("no transcript for this session")
-	// ErrNoUsage means the transcript holds no assistant turn with token usage.
-	ErrNoUsage = errors.New("no assistant turn with token usage yet")
+	"github.com/bensyverson/contextfill/fill"
 )
 
 // Find returns the path of the session's transcript, searching every project
@@ -29,7 +23,31 @@ func Find(projectsDir, sessionID string) (string, error) {
 		return "", fmt.Errorf("searching %s: %w", projectsDir, err)
 	}
 	if len(matches) == 0 {
-		return "", fmt.Errorf("session %s under %s: %w", sessionID, projectsDir, ErrNoTranscript)
+		return "", fmt.Errorf("session %s under %s: %w", sessionID, projectsDir, fill.ErrNoSession)
 	}
 	return matches[0], nil
+}
+
+// Projects is a fill.Source over the transcripts under a projects directory,
+// ~/.claude/projects by default.
+type Projects struct {
+	Dir string
+}
+
+// Latest returns the latest reading of the session's main thread.
+func (p Projects) Latest(sessionID string) (fill.Reading, error) {
+	path, err := Find(p.Dir, sessionID)
+	if err != nil {
+		return fill.Reading{}, err
+	}
+	return Latest(path)
+}
+
+// Agents lists the session's subagents.
+func (p Projects) Agents(sessionID string) ([]fill.Agent, error) {
+	path, err := Find(p.Dir, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	return Agents(path)
 }

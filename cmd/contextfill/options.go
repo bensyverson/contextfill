@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/bensyverson/contextfill/fill"
 )
 
 // options is a parsed command line.
@@ -19,6 +21,8 @@ type options struct {
 	// mainMaxPercent is the hook's --main-max limit for the main thread; 0
 	// means it falls back to maxPercent.
 	mainMaxPercent float64
+	// harness is the --harness override; "" means detect it.
+	harness fill.Harness
 }
 
 // parse reads the command line. Flags and the session id may come in any
@@ -46,6 +50,20 @@ func parse(args []string) (options, error) {
 				return o, err
 			}
 			o.mainMaxPercent = percent
+		case arg == "--harness" || strings.HasPrefix(arg, "--harness="):
+			value, ok := strings.CutPrefix(arg, "--harness=")
+			if !ok {
+				if i+1 >= len(args) {
+					return o, fmt.Errorf("--harness needs a name: %s or %s", fill.ClaudeCode, fill.OpenCode)
+				}
+				i++
+				value = args[i]
+			}
+			h, err := fill.ParseHarness(value)
+			if err != nil {
+				return o, err
+			}
+			o.harness = h
 		case arg == "hook" && !o.hook && o.sessionID == "":
 			o.hook = true
 		case strings.HasPrefix(arg, "-"):
@@ -60,6 +78,9 @@ func parse(args []string) (options, error) {
 	}
 	if o.mainMaxPercent > 0 && !o.hook {
 		return o, fmt.Errorf("--main-max applies only to contextfill hook; a bare read is always the main thread, so use --max")
+	}
+	if o.harness != "" && o.hook {
+		return o, fmt.Errorf("hook answers Claude Code's PostToolUse payload, which names its own transcript; it takes no --harness")
 	}
 	return o, nil
 }

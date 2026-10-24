@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bensyverson/contextfill/fill"
 	"github.com/bensyverson/contextfill/transcript"
 )
 
@@ -27,8 +28,8 @@ func TestFindLocatesTheSessionInAnyProjectDirectory(t *testing.T) {
 
 func TestFindReportsAMissingSession(t *testing.T) {
 	_, err := transcript.Find(t.TempDir(), sessionID)
-	if !errors.Is(err, transcript.ErrNoTranscript) {
-		t.Errorf("Find error = %v, want ErrNoTranscript", err)
+	if !errors.Is(err, fill.ErrNoSession) {
+		t.Errorf("Find error = %v, want ErrNoSession", err)
 	}
 }
 
@@ -99,7 +100,7 @@ func TestLatestReportsATranscriptWithNoAssistantTurn(t *testing.T) {
 	writeLines(t, path, entry(map[string]any{"type": "user"}))
 
 	_, err := transcript.Latest(path)
-	if !errors.Is(err, transcript.ErrNoUsage) {
+	if !errors.Is(err, fill.ErrNoUsage) {
 		t.Errorf("Latest error = %v, want ErrNoUsage", err)
 	}
 }
@@ -114,5 +115,31 @@ func TestWindowForModel(t *testing.T) {
 		if got := transcript.WindowFor(model); got != want {
 			t.Errorf("WindowFor(%q) = %d, want %d", model, got, want)
 		}
+	}
+}
+
+var _ fill.Source = transcript.Projects{}
+
+func TestProjectsReadsASessionByID(t *testing.T) {
+	projects := t.TempDir()
+	session := filepath.Join(projects, "-Users-someone-git-App", sessionID+".jsonl")
+	writeLines(t, session, assistant("claude-opus-5-5[1m]", usage{input: 5, cacheRead: 300_000}))
+	writeLines(t, filepath.Join(projects, "-Users-someone-git-App", sessionID, "subagents", "agent-a1.jsonl"),
+		assistant("claude-sonnet-5-5", usage{input: 50_000}))
+
+	source := transcript.Projects{Dir: projects}
+	reading, err := source.Latest(sessionID)
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if reading.Used != 300_005 || reading.Window != 1_000_000 {
+		t.Errorf("Latest = %+v", reading)
+	}
+	agents, err := source.Agents(sessionID)
+	if err != nil || len(agents) != 1 || agents[0].ID != "a1" {
+		t.Errorf("Agents = %+v, %v", agents, err)
+	}
+	if _, err := source.Latest("no-such-session"); !errors.Is(err, fill.ErrNoSession) {
+		t.Errorf("Latest of a missing session: %v, want ErrNoSession", err)
 	}
 }

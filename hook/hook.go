@@ -8,6 +8,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/bensyverson/contextfill/fill"
 	"github.com/bensyverson/contextfill/transcript"
 )
 
@@ -62,7 +63,7 @@ func Respond(r io.Reader, limits Limits) ([]byte, error) {
 		return nil, nil
 	}
 	var (
-		reading transcript.Reading
+		reading fill.Reading
 		err     error
 	)
 	if in.AgentID != "" {
@@ -75,7 +76,7 @@ func Respond(r io.Reader, limits Limits) ([]byte, error) {
 	}
 
 	text := fmt.Sprintf("contextfill: %s · %s tokens in context after this commit.",
-		reading.Summary(), transcript.Tokens(reading.Used))
+		reading.Summary(), fill.Tokens(reading.Used))
 	if maxPercent := limits.For(in.AgentID); maxPercent > 0 && reading.Fill()*100 > maxPercent {
 		text += fmt.Sprintf(" That is over the %s%% limit: finish what's in flight and write the handoff rather than starting new work.",
 			strconv.FormatFloat(maxPercent, 'f', -1, 64))

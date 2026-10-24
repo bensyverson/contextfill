@@ -2,7 +2,7 @@ IMPORTANT: As you implement features, keep the [README](README.md) and `contextf
 
 ## Overview
 
-You are working on `contextfill`, a small Go CLI that tells a Claude Code session how full its context window is, so an agent can check before it starts more work. It reads the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`) and sums the input side of the latest assistant turn. `transcript/` is the library: finding a session, reading its latest usage, listing its subagents. `hook/` answers Claude Code's PostToolUse hook, telling the model its fill after a commit. `cmd/contextfill/` is the thin CLI over both.
+You are working on `contextfill`, a small Go CLI that tells a Claude Code or OpenCode session how full its context window is, so an agent can check before it starts more work. It sums the input side of the session's latest assistant turn. `fill/` holds what both readers share: `Reading`, `Agent`, the `Source` interface and harness detection. `transcript/` is Claude Code's reader, over the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`). `opencode/` is OpenCode's, over its running server's local HTTP API ([why](project/2026-10-24-opencode-findings.md)). `hook/` answers Claude Code's PostToolUse hook, telling the model its fill after a commit. `cmd/contextfill/` is the thin CLI over all of them.
 
 ## Documentation
 
@@ -13,6 +13,7 @@ You are working on `contextfill`, a small Go CLI that tells a Claude Code sessio
 
 - **This repo is public, and transcripts are private.** Never commit a real transcript or anything lifted from one — prompts, file paths, task descriptions, token figures. Test fixtures are synthetic and built in the test (`transcript/fixture_test.go`).
 - **The transcript format is Claude Code's, not ours, and it is undocumented.** It reads only `type`, `isSidechain`, `requestedModel`, `message.model` and `message.usage` from each line, each subagent's `.meta.json` beside its transcript, and from a hook payload `transcript_path`, `agent_id`, `tool_name` and `tool_input.command`. When Claude Code changes one, fix the reader and add a fixture case for the new shape; never guess past a field that's missing.
+- **OpenCode's API is OpenCode's, not ours.** From it `opencode/` reads only a session's `id`, `parentID`, `title`, `model`, `location.directory` and `time.{updated,idle}`; an assistant message's `model` and `tokens.{input,cache.read,cache.write}`; a model's `id`, `providerID` and `limit.context`; and each list's `data` and `cursor.next`. Its fixtures are a synthetic `httptest` server (`opencode/server_test.go`) that mirrors the real one's quirks; when the real server surprises you, teach the fake first, red, then fix the client. `opencode/` never reads OpenCode's SQLite store (only `scripts/opencode-shape.sh` surveys it): its schema is private, and its older tables still look valid while going stale.
 - **A bare `contextfill` reports, it doesn't print a primer.** This breaks the shared CLI rule on purpose: the tool has one read, and the point is to run it often. `--help` is the primer.
 - **Build and install:** `make install` puts `contextfill` in `$GOBIN`; `make hooks` once per clone installs the pre-commit hook (go vet, go fix, gofmt, go mod tidy, tests, `agents check`).
 

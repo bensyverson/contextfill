@@ -2,7 +2,7 @@
 
 > Tells an AI coding assistant how much of its memory for this conversation is used up.
 
-A Claude Code session can only hold so much in its context window, and its reasoning gets looser as the window fills. `contextfill` reads the session's own transcript and reports how full the window is, so the assistant can check before it starts more work, or decide it's time to write a handoff. It also reports each subagent the session started, which helps when deciding whether to resume one or hand its work to a fresh agent.
+A [Claude Code](https://claude.com/claude-code) or [OpenCode](https://opencode.ai) session can only hold so much in its context window, and its reasoning gets looser as the window fills. `contextfill` reads the session's own record and reports how full the window is, so the assistant can check before it starts more work, or decide it's time to write a handoff. It also reports each subagent the session started, which helps when deciding whether to resume one or hand its work to a fresh agent.
 
 ## Install
 
@@ -14,7 +14,7 @@ Or, from a clone, `make install`.
 
 ## Quick start
 
-From a shell inside Claude Code, with no arguments, it reads the current session:
+From a shell inside Claude Code or OpenCode, with no arguments, it reads the current session:
 
 ```
 $ contextfill
@@ -30,11 +30,11 @@ $ contextfill --agents
   a7f0b3d95e12c4a86  12% of 200k  running   sonnet  Write the settings docs
 ```
 
-`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session. `contextfill --help` has the details.
+`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session, and `--harness claude` or `--harness opencode` picks whose. `contextfill --help` has the details.
 
 ## After every commit
 
-As a Claude Code hook, it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
+As a Claude Code hook (OpenCode's equivalent, a plugin, isn't built yet), it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
 
 ```json
 {
@@ -57,6 +57,8 @@ Claude Code keeps each session's transcript at `~/.claude/projects/<project>/<se
 
 The transcript format belongs to Claude Code and isn't documented, so a Claude Code update can change it; `contextfill` exits 4 rather than guess when it can't find a reading.
 
+OpenCode sets `OPENCODE=1` and `OPENCODE_SESSION_ID` in its shells, and `contextfill` checks for it first: an OpenCode started from a Claude Code shell inherits Claude Code's variables. OpenCode keeps sessions in a private database, and only its running server knows every model's window, so `contextfill` asks that server, over the same local HTTP API OpenCode's own clients use. It finds the server and its password in `~/.local/state/opencode/service.json` (under `$XDG_STATE_HOME` if that's set), and reads only the newest few steps and the model list. The fill is the newest finished step's `input + cache.read + cache.write` over the model's `limit.context`. OpenCode's own footer adds that step's output, so it reads slightly higher. A model whose window the server doesn't know reads "window unknown" rather than a guess. [The findings](project/2026-10-24-opencode-findings.md) have the details.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -64,8 +66,8 @@ The transcript format belongs to Claude Code and isn't documented, so a Claude C
 | 0 | Reported |
 | 1 | The fill is over `--max` |
 | 2 | Usage error |
-| 4 | The transcript is missing or holds no reading |
-| 5 | No session to read: `CLAUDE_CODE_SESSION_ID` isn't set and no id was given |
+| 4 | The session is missing or holds no reading, or `--max` was given for a model whose window is unknown |
+| 5 | No session to read (`CLAUDE_CODE_SESSION_ID` or `OPENCODE_SESSION_ID` isn't set and no id was given), or OpenCode's server isn't running |
 
 ---
 

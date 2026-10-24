@@ -8,21 +8,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-)
 
-// Agent is one subagent of a session.
-type Agent struct {
-	// ID is the agent's id, from its transcript's file name (agent-<id>.jsonl).
-	ID string
-	// Description is the short task description the agent was launched with.
-	Description string
-	// Model is the model alias it was launched with, e.g. "opus".
-	Model string
-	// Finished reports whether the agent has completed.
-	Finished bool
-	// Reading is its latest context reading; zero if it hasn't answered yet.
-	Reading Reading
-}
+	"github.com/bensyverson/contextfill/fill"
+)
 
 // meta is the part of an agent's .meta.json this package reads.
 type meta struct {
@@ -34,17 +22,17 @@ type meta struct {
 // Agents lists the subagents of the session whose transcript is at
 // sessionPath, in id order. They live beside it, in
 // <session id>/subagents/agent-<id>.jsonl with an agent-<id>.meta.json.
-func Agents(sessionPath string) ([]Agent, error) {
+func Agents(sessionPath string) ([]fill.Agent, error) {
 	dir := subagentsDir(sessionPath)
 	paths, err := filepath.Glob(filepath.Join(dir, "agent-*.jsonl"))
 	if err != nil {
 		return nil, fmt.Errorf("searching %s: %w", dir, err)
 	}
 	sort.Strings(paths)
-	agents := make([]Agent, 0, len(paths))
+	agents := make([]fill.Agent, 0, len(paths))
 	for _, path := range paths {
 		base := strings.TrimSuffix(path, ".jsonl")
-		agent := Agent{ID: strings.TrimPrefix(filepath.Base(base), "agent-")}
+		agent := fill.Agent{ID: strings.TrimPrefix(filepath.Base(base), "agent-")}
 		if body, err := os.ReadFile(base + ".meta.json"); err == nil {
 			var m meta
 			if err := json.Unmarshal(body, &m); err != nil {
@@ -56,7 +44,7 @@ func Agents(sessionPath string) ([]Agent, error) {
 		switch {
 		case err == nil:
 			agent.Reading = reading
-		case !errors.Is(err, ErrNoUsage):
+		case !errors.Is(err, fill.ErrNoUsage):
 			return nil, err
 		}
 		agents = append(agents, agent)
@@ -66,7 +54,7 @@ func Agents(sessionPath string) ([]Agent, error) {
 
 // LatestOfAgent returns the latest reading of one subagent of the session
 // whose transcript is at sessionPath.
-func LatestOfAgent(sessionPath, agentID string) (Reading, error) {
+func LatestOfAgent(sessionPath, agentID string) (fill.Reading, error) {
 	return latest(agentPath(sessionPath, agentID), true)
 }
 

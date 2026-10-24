@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/bensyverson/contextfill/fill"
 )
 
 // entry is the part of a transcript line this package reads.
@@ -35,16 +37,16 @@ func (e entry) used() int {
 // most recent main-thread assistant turn, skipping any sidechain turns a
 // subagent left in it. Lines that aren't JSON and turns with no usage are
 // skipped; a transcript with no usable turn is ErrNoUsage.
-func Latest(path string) (Reading, error) {
+func Latest(path string) (fill.Reading, error) {
 	return latest(path, false)
 }
 
 // latest is Latest, optionally counting sidechain turns: a subagent's own
 // transcript marks every turn as a sidechain of its parent.
-func latest(path string, sidechains bool) (Reading, error) {
+func latest(path string, sidechains bool) (fill.Reading, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return Reading{}, fmt.Errorf("opening transcript: %w", err)
+		return fill.Reading{}, fmt.Errorf("opening transcript: %w", err)
 	}
 	defer f.Close()
 
@@ -62,15 +64,15 @@ func latest(path string, sidechains bool) (Reading, error) {
 			break
 		}
 		if readErr != nil {
-			return Reading{}, fmt.Errorf("reading %s: %w", path, readErr)
+			return fill.Reading{}, fmt.Errorf("reading %s: %w", path, readErr)
 		}
 	}
 	if latest == nil {
-		return Reading{}, fmt.Errorf("%s: %w", path, ErrNoUsage)
+		return fill.Reading{}, fmt.Errorf("%s: %w", path, fill.ErrNoUsage)
 	}
 	model := latest.RequestedModel
 	if model == "" {
 		model = latest.Message.Model
 	}
-	return Reading{Model: model, Used: latest.used(), Window: WindowFor(model)}, nil
+	return fill.Reading{Model: model, Used: latest.used(), Window: WindowFor(model)}, nil
 }

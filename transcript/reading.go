@@ -2,25 +2,6 @@ package transcript
 
 import "strings"
 
-// Reading is one measurement of a context window.
-type Reading struct {
-	// Model is the model the turn asked for, e.g. "claude-opus-5-5[1m]".
-	Model string
-	// Used is the number of tokens the context held at the latest turn.
-	Used int
-	// Window is the model's context window, in tokens.
-	Window int
-}
-
-// Fill is the fraction of the window in use, from 0 to 1. It is 0 for a
-// reading with no window.
-func (r Reading) Fill() float64 {
-	if r.Window <= 0 {
-		return 0
-	}
-	return float64(r.Used) / float64(r.Window)
-}
-
 const (
 	defaultWindow = 200_000
 	millionWindow = 1_000_000
