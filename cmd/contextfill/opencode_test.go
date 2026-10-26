@@ -132,7 +132,7 @@ func TestHookForOpenCodeAnswersACommitInPlainText(t *testing.T) {
 	env := map[string]string{"XDG_STATE_HOME": openCodeState(t, 262_144, 1_048_576)}
 	commit, _ := json.Marshal(map[string]any{"tool": "shell", "sessionID": openCodeSession, "input": map[string]any{"command": "git commit -F m"}})
 	code, out, errOut := invokeWithInput(env, string(commit), "hook", "--harness", "opencode", "--max", "40", "--main-max", "20")
-	if code != 0 || out != "contextfill: 25% of 1M · 262.1k tokens in context after this commit. That is over the 20% limit: finish what's in flight and write the handoff rather than starting new work.\n" {
+	if code != 0 || out != "contextfill: 25% of 1M · 262.1k tokens in context after this commit (over 20%).\n" {
 		t.Errorf("exit %d, stdout %q, stderr %q", code, out, errOut)
 	}
 	status, _ := json.Marshal(map[string]any{"tool": "shell", "sessionID": openCodeSession, "input": map[string]any{"command": "git status"}})

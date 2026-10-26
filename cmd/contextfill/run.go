@@ -104,7 +104,7 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 	}
 	if o.maxPercent > 0 && reading.Fill()*100 > o.maxPercent {
 		if !o.json {
-			fmt.Fprintf(stdout, "over the %s%% limit: write the handoff before starting more work\n", trimmed(o.maxPercent))
+			fmt.Fprintf(stdout, "over %s%%\n", trimmed(o.maxPercent))
 		}
 		return exitOverMax
 	}
@@ -219,8 +219,8 @@ As a Claude Code PostToolUse hook on Bash, or through its OpenCode plugin, it
 tells the model its fill after every git commit (a subagent gets its own), and
 stays silent otherwise:
 
-  contextfill hook --max 40    reads the hook payload on stdin; past 40% it says
-                               to finish what's in flight and write the handoff
+  contextfill hook --max 40    reads the hook payload on stdin; past 40% it adds
+                               that the fill is over 40%
   contextfill hook --max 40 --main-max 25
                                the same, but the main thread's limit is 25%
                                (--main-max falls back to --max)

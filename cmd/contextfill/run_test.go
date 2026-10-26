@@ -88,10 +88,10 @@ func TestMaxExitsOneWhenTheFillIsOver(t *testing.T) {
 	config := home(t, "claude-opus-5-5[1m]", 450_000)
 	env := map[string]string{"CLAUDE_CONFIG_DIR": config, "CLAUDE_CODE_SESSION_ID": sessionID}
 
-	if code, out, _ := invoke(env, "--max", "40"); code != 1 || !strings.Contains(out, "over the 40% limit") {
+	if code, out, _ := invoke(env, "--max", "40"); code != 1 || !strings.HasSuffix(out, "\nover 40%\n") {
 		t.Errorf("over: exit %d, stdout %q", code, out)
 	}
-	if code, out, _ := invoke(env, "--max", "50"); code != 0 || strings.Contains(out, "limit") {
+	if code, out, _ := invoke(env, "--max", "50"); code != 0 || strings.Contains(out, "over") {
 		t.Errorf("under: exit %d, stdout %q", code, out)
 	}
 }
@@ -185,7 +185,7 @@ func TestHookAnswersACommitWithTheFill(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d, stderr %q", code, errOut)
 	}
-	if !strings.Contains(out, `"additionalContext":"contextfill: 45% of 1M`) || !strings.Contains(out, "over the 40% limit") {
+	if !strings.Contains(out, `"additionalContext":"contextfill: 45% of 1M`) || !strings.Contains(out, "after this commit (over 40%).") {
 		t.Errorf("stdout = %q", out)
 	}
 }
@@ -199,7 +199,7 @@ func TestHookJudgesTheMainThreadAgainstMainMax(t *testing.T) {
 	})
 
 	code, out, errOut := invokeWithInput(nil, string(payload), "hook", "--max", "40", "--main-max=25")
-	if code != 0 || !strings.Contains(out, "over the 25% limit") {
+	if code != 0 || !strings.Contains(out, "(over 25%).") {
 		t.Errorf("exit %d, stdout %q, stderr %q; want the main thread over --main-max 25", code, out, errOut)
 	}
 }

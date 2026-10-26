@@ -90,7 +90,7 @@ func TestInASubagentItReportsTheAgentsOwnFill(t *testing.T) {
 	}
 }
 
-func TestOverTheLimitItSaysToWriteTheHandoff(t *testing.T) {
+func TestOverTheLimitItSaysSo(t *testing.T) {
 	transcript := filepath.Join(t.TempDir(), sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5[1m]", 450_000, false))
 
@@ -98,8 +98,8 @@ func TestOverTheLimitItSaysToWriteTheHandoff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
-	if got := context(t, out); !strings.Contains(got, "over the 40% limit") || !strings.Contains(got, "handoff") {
-		t.Errorf("additionalContext = %q, want the over-limit advice", got)
+	if got := context(t, out); !strings.HasSuffix(got, "after this commit (over 40%).") {
+		t.Errorf("additionalContext = %q, want it to say the fill is over 40%%", got)
 	}
 }
 
@@ -111,7 +111,7 @@ func TestTheMainThreadIsJudgedAgainstMainMax(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
-	if got := context(t, out); !strings.Contains(got, "over the 25% limit") {
+	if got := context(t, out); !strings.Contains(got, "(over 25%)") {
 		t.Errorf("additionalContext = %q, want the main thread's 30%% over its 25%% limit", got)
 	}
 }
@@ -127,11 +127,11 @@ func TestASubagentIsJudgedAgainstMaxEvenWithMainMax(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Respond: %v", err)
 	}
-	if got := context(t, out); strings.Contains(got, "limit") {
-		t.Errorf("additionalContext = %q, want no advice for the agent's 30%% under --max 40", got)
+	if got := context(t, out); strings.Contains(got, "over") {
+		t.Errorf("additionalContext = %q, want no note for the agent's 30%% under --max 40", got)
 	}
 	out, _ = hook.Respond(strings.NewReader(payload), hook.Limits{Max: 20, MainMax: 50})
-	if got := context(t, out); !strings.Contains(got, "over the 20% limit") {
+	if got := context(t, out); !strings.Contains(got, "(over 20%)") {
 		t.Errorf("additionalContext = %q, want the agent's 30%% over --max 20", got)
 	}
 }

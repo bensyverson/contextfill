@@ -49,7 +49,7 @@ As a Claude Code hook or an OpenCode plugin, it tells the model its fill each ti
 }
 ```
 
-Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a nudge to write the handoff once the fill passes 40%. `--main-max 25` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Any other command gets no output.
+Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a note once the fill passes 40%. `--main-max 25` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Any other command gets no output.
 
 In OpenCode, the plugin does the same. Link it into OpenCode's global plugins directory, then tell OpenCode's background server to load it:
 

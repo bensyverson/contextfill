@@ -59,14 +59,14 @@ func TestAfterAnOpenCodeCommitItReportsTheFill(t *testing.T) {
 
 func TestOpenCodesMainSessionIsJudgedAgainstMainMax(t *testing.T) {
 	got, _ := hook.RespondOpenCode(strings.NewReader(event("shell", "ses_main", "git commit")), hook.Limits{Max: 40, MainMax: 25}, openCode)
-	if !strings.Contains(got, "over the 25% limit") {
+	if !strings.Contains(got, "(over 25%)") {
 		t.Errorf("RespondOpenCode = %q, want the main session over 25%%", got)
 	}
 }
 
 func TestAnOpenCodeSubagentIsJudgedAgainstMax(t *testing.T) {
 	got, _ := hook.RespondOpenCode(strings.NewReader(event("shell", "ses_child", "git commit")), hook.Limits{Max: 40, MainMax: 25}, openCode)
-	if got == "" || strings.Contains(got, "limit") {
+	if got == "" || strings.Contains(got, "over") {
 		t.Errorf("RespondOpenCode = %q, want the subagent's 30%% under --max 40", got)
 	}
 }
