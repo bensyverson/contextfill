@@ -54,6 +54,10 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 		fmt.Fprint(stdout, helpText)
 		return exitOK
 	}
+	if o.version {
+		fmt.Fprintf(stdout, "contextfill %s\n", version)
+		return exitOK
+	}
 	if o.hook {
 		return runHook(o, env, stdin, stdout, stderr)
 	}
@@ -203,6 +207,7 @@ Usage:
   contextfill --json           the same reading, and every subagent, as JSON
   contextfill --harness opencode ses_…
                                reads that harness's session, whatever shell this is
+  contextfill --version        prints contextfill's own version
 
 Claude Code: reads the transcript under ~/.claude/projects (or
 $CLAUDE_CONFIG_DIR). OpenCode: asks its running server, found through

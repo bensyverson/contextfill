@@ -7,10 +7,10 @@ A [Claude Code](https://claude.com/claude-code) or [OpenCode](https://opencode.a
 ## Install
 
 ```
-go install github.com/bensyverson/contextfill/cmd/contextfill@latest
+brew install bensyverson/tap/contextfill
 ```
 
-Or, from a clone, `make install`.
+Homebrew also installs [the OpenCode plugin](#after-every-commit); `brew info contextfill` shows where. Or, with Go, `go install github.com/bensyverson/contextfill/cmd/contextfill@latest`, or `make install` from a clone.
 
 ## Quick start
 
@@ -30,7 +30,7 @@ $ contextfill --agents
   a7f0b3d95e12c4a86  12% of 200k  running   sonnet  Write the settings docs
 ```
 
-`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session, and `--harness claude` or `--harness opencode` picks whose. `contextfill --help` has the details.
+`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session, and `--harness claude` or `--harness opencode` picks whose. `contextfill --version` prints its version, and `contextfill --help` has the details.
 
 ## After every commit
 
@@ -54,11 +54,13 @@ Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40
 In OpenCode, the plugin does the same. Link it into OpenCode's global plugins directory, then tell OpenCode's background server to load it:
 
 ```
-ln -s "$PWD/opencode/plugin/contextfill.js" ~/.config/opencode/plugins/contextfill.js
+ln -s "$(brew --prefix)/opt/contextfill/share/contextfill/contextfill.js" ~/.config/opencode/plugins/contextfill.js
 opencode reload
 ```
 
-The limits (`--max 40 --main-max 25`) are at the top of [the plugin](opencode/plugin/contextfill.js); set `CONTEXTFILL` to the binary's full path if `contextfill` isn't on the `PATH` OpenCode runs with. A subagent's session is judged against `--max`, the main session against `--main-max`.
+From a clone, link `"$PWD/opencode/plugin/contextfill.js"` instead.
+
+The limits (`--max 40 --main-max 25`) are at the top of [the plugin](opencode/plugin/contextfill.js); to change them in a Homebrew install, copy the plugin rather than linking it, since an upgrade replaces it. Set `CONTEXTFILL` to the binary's full path if `contextfill` isn't on the `PATH` OpenCode runs with. A subagent's session is judged against `--max`, the main session against `--main-max`.
 
 ## How it works
 

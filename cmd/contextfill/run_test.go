@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -206,6 +207,19 @@ func TestHookJudgesTheMainThreadAgainstMainMax(t *testing.T) {
 func TestHelpDocumentsMainMax(t *testing.T) {
 	if _, out, _ := invoke(nil, "--help"); !strings.Contains(out, "--main-max") {
 		t.Errorf("--help doesn't mention --main-max:\n%s", out)
+	}
+}
+
+func TestVersionNeedsNoSession(t *testing.T) {
+	code, out, _ := invoke(map[string]string{}, "--version")
+	if code != 0 || !regexp.MustCompile(`^contextfill \d+\.\d+\.\d+\n$`).MatchString(out) {
+		t.Errorf("exit %d, stdout %q", code, out)
+	}
+}
+
+func TestHelpDocumentsVersion(t *testing.T) {
+	if _, out, _ := invoke(nil, "--help"); !strings.Contains(out, "--version") {
+		t.Errorf("--help doesn't mention --version:\n%s", out)
 	}
 }
 

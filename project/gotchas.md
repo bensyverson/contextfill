@@ -9,3 +9,7 @@ Project-specific traps that cost real time and that no general rule predicts. Re
 Format: one dated H2 headline, then one paragraph. If an entry needs more than that, it's a finding — write it as a dated doc under `project/` and link it from the paragraph.
 
 ---
+
+## 2026-10-26 — `go test` panics in Claude Code's sandbox
+
+The OpenCode tests start an `httptest` server, and the Bash sandbox refuses to bind a local port, so `go test ./...` panics with `bind: operation not permitted` and looks like a regression. Run the suite with the sandbox disabled, or set `sandbox.network.allowLocalBinding: true`. The sandbox also hides Go's build cache under `~/Library/Caches`; `GOCACHE=$TMPDIR/gocache` works around that for builds that don't need a port.

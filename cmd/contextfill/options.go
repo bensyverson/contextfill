@@ -10,7 +10,8 @@ import (
 
 // options is a parsed command line.
 type options struct {
-	help bool
+	help    bool
+	version bool
 	// hook means answer a Claude Code PostToolUse hook from stdin.
 	hook      bool
 	agents    bool
@@ -34,6 +35,8 @@ func parse(args []string) (options, error) {
 		switch {
 		case arg == "-h" || arg == "--help":
 			o.help = true
+		case arg == "--version":
+			o.version = true
 		case arg == "--agents":
 			o.agents = true
 		case arg == "--json":
