@@ -18,14 +18,14 @@ From a shell inside Claude Code or OpenCode, with no arguments, it reads the cur
 
 ```
 $ contextfill
-23% of 1M · 234.5k tokens · claude-opus-5-5[1m] · session 5f3a9c21
+23% of 1M · 234.5k tokens · claude-opus-5-5 · session 5f3a9c21
 ```
 
 Add `--agents` for the session's subagents, one row each:
 
 ```
 $ contextfill --agents
-31% of 1M · 312k tokens · claude-opus-5-5[1m] · session 5f3a9c21
+31% of 1M · 312k tokens · claude-opus-5-5 · session 5f3a9c21
   a2c41e7b9d03f6158  37% of 1M    finished  opus    Add the export menu
   a7f0b3d95e12c4a86  12% of 200k  running   sonnet  Write the settings docs
 ```
@@ -64,7 +64,7 @@ The limits (`--max 40 --main-max 25`) are at the top of [the plugin](opencode/pl
 
 ## How it works
 
-Claude Code keeps each session's transcript at `~/.claude/projects/<project>/<session id>.jsonl` (under `$CLAUDE_CONFIG_DIR` if that's set), and sets `CLAUDE_CODE_SESSION_ID` in every shell it starts. Each assistant turn records the tokens it was sent. The fill is the input side of the latest turn (`input_tokens + cache_read_input_tokens + cache_creation_input_tokens`) divided by the model's window: a million tokens when the requested model carries the `[1m]` suffix, otherwise 200k. Subagents' transcripts sit beside it in `<session id>/subagents/`.
+Claude Code keeps each session's transcript at `~/.claude/projects/<project>/<session id>.jsonl` (under `$CLAUDE_CONFIG_DIR` if that's set), and sets `CLAUDE_CODE_SESSION_ID` in every shell it starts. Each assistant turn records the tokens it was sent. The fill is the input side of the latest turn (`input_tokens + cache_read_input_tokens + cache_creation_input_tokens`) divided by the window Claude Code gives the requested model. [Claude Code's docs](https://code.claude.com/docs/en/model-config) give Opus 4.7 and later, Sonnet 5 and later, Haiku 5.5 and the Fable models a million tokens by default, and any other model a million only when it is requested with the `[1m]` suffix; everything else gets 200k. Setting `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` holds every model to 200k, in Claude Code and in `contextfill` alike. Subagents' transcripts sit beside it in `<session id>/subagents/`.
 
 The transcript format belongs to Claude Code and isn't documented, so a Claude Code update can change it; `contextfill` exits 4 rather than guess when it can't find a reading.
 

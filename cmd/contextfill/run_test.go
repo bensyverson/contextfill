@@ -66,7 +66,7 @@ func TestReportsTheCurrentSessionFromItsEnvironment(t *testing.T) {
 }
 
 func TestASessionIDArgumentWinsOverTheEnvironment(t *testing.T) {
-	config := home(t, "claude-sonnet-5-5", 150_000)
+	config := home(t, "claude-sonnet-4-6", 150_000)
 	code, out, _ := invoke(map[string]string{"CLAUDE_CONFIG_DIR": config, "CLAUDE_CODE_SESSION_ID": "some-other-session"}, sessionID)
 
 	if code != 0 || !strings.HasPrefix(out, "75% of 200k · 150k tokens") {
@@ -79,7 +79,7 @@ func TestFindsTheConfigDirUnderHomeByDefault(t *testing.T) {
 	write(t, filepath.Join(homeDir, ".claude", "projects", "p", sessionID+".jsonl"), turn("claude-opus-5-5", 20_000))
 	code, out, _ := invoke(map[string]string{"HOME": homeDir, "CLAUDE_CODE_SESSION_ID": sessionID})
 
-	if code != 0 || !strings.HasPrefix(out, "10% of 200k · 20k tokens") {
+	if code != 0 || !strings.HasPrefix(out, "2% of 1M · 20k tokens") {
 		t.Errorf("exit %d, stdout %q", code, out)
 	}
 }
@@ -101,7 +101,7 @@ func TestAgentsListsEachSubagent(t *testing.T) {
 	subagents := filepath.Join(config, "projects", "-Users-someone-git-App", sessionID, "subagents")
 	write(t, filepath.Join(subagents, "agent-a2c41e7b.jsonl"), turn("claude-opus-5-5[1m]", 412_000))
 	write(t, filepath.Join(subagents, "agent-a2c41e7b.meta.json"), `{"description":"Add the export menu","model":"opus","finished":false}`)
-	write(t, filepath.Join(subagents, "agent-b2.jsonl"), turn("claude-sonnet-5-5", 60_000))
+	write(t, filepath.Join(subagents, "agent-b2.jsonl"), turn("claude-sonnet-4-6", 60_000))
 	write(t, filepath.Join(subagents, "agent-b2.meta.json"), `{"description":"Docs index","model":"sonnet","finished":true}`)
 
 	code, out, errOut := invoke(map[string]string{"CLAUDE_CONFIG_DIR": config, "CLAUDE_CODE_SESSION_ID": sessionID}, "--agents")

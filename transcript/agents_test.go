@@ -14,7 +14,7 @@ func TestAgentsListsEachSubagentWithItsFill(t *testing.T) {
 	subagents := filepath.Join(dir, sessionID, "subagents")
 	writeLines(t, filepath.Join(subagents, "agent-a1.jsonl"), assistant("claude-opus-5-5[1m]", usage{input: 400_000}))
 	writeFile(t, filepath.Join(subagents, "agent-a1.meta.json"), `{"description":"Add the export menu","model":"opus","finished":true}`)
-	writeLines(t, filepath.Join(subagents, "agent-b2.jsonl"), assistant("claude-sonnet-5-5", usage{input: 50_000}))
+	writeLines(t, filepath.Join(subagents, "agent-b2.jsonl"), assistant("claude-sonnet-4-6", usage{input: 50_000}))
 	writeFile(t, filepath.Join(subagents, "agent-b2.meta.json"), `{"description":"Docs index","model":"sonnet","finished":false}`)
 
 	agents, err := transcript.Agents(session)

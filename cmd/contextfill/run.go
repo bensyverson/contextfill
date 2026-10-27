@@ -201,7 +201,7 @@ $CLAUDE_CODE_SESSION_ID.
 Usage:
   contextfill [session-id] [--agents] [--max <percent>] [--json] [--harness <name>]
 
-  contextfill                  23% of 1M · 234.5k tokens · claude-opus-5-5[1m] · session 5f3a9c21
+  contextfill                  23% of 1M · 234.5k tokens · claude-opus-5-5 · session 5f3a9c21
   contextfill --agents         ...plus one row per subagent: id, fill, running or finished, model, task
   contextfill --max 40         exits 1 when the fill is over 40%, so a script can branch on it
   contextfill --json           the same reading, and every subagent, as JSON
@@ -210,7 +210,10 @@ Usage:
   contextfill --version        prints contextfill's own version
 
 Claude Code: reads the transcript under ~/.claude/projects (or
-$CLAUDE_CONFIG_DIR). OpenCode: asks its running server, found through
+$CLAUDE_CONFIG_DIR). The window is the one Claude Code gives the model: 1M for
+Opus 4.7 and later, Sonnet 5 and later, Haiku 5.5, the Fable models, or any
+model requested with [1m]; otherwise 200k, as is every model when
+CLAUDE_CODE_DISABLE_1M_CONTEXT=1. OpenCode: asks its running server, found through
 ~/.local/state/opencode/service.json (or $XDG_STATE_HOME), the way OpenCode's
 own clients do. A model OpenCode doesn't know the window of reads "window
 unknown", and --max can't judge it.

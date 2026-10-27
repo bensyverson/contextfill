@@ -79,7 +79,7 @@ func TestInASubagentItReportsTheAgentsOwnFill(t *testing.T) {
 	dir := t.TempDir()
 	transcript := filepath.Join(dir, sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
-	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-5-5", 90_000, true))
+	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-4-6", 90_000, true))
 
 	out, err := hook.Respond(strings.NewReader(input(transcript, "a7f0b3d9", "git commit -F m")), hook.Limits{})
 	if err != nil {
@@ -120,7 +120,7 @@ func TestASubagentIsJudgedAgainstMaxEvenWithMainMax(t *testing.T) {
 	dir := t.TempDir()
 	transcript := filepath.Join(dir, sessionID+".jsonl")
 	write(t, transcript, turn("claude-opus-5-5[1m]", 300_000, false))
-	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-5-5", 60_000, true))
+	write(t, filepath.Join(dir, sessionID, "subagents", "agent-a7f0b3d9.jsonl"), turn("claude-sonnet-4-6", 60_000, true))
 
 	payload := input(transcript, "a7f0b3d9", "git commit -F m")
 	out, err := hook.Respond(strings.NewReader(payload), hook.Limits{Max: 40, MainMax: 25})

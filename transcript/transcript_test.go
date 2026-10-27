@@ -107,14 +107,54 @@ func TestLatestReportsATranscriptWithNoAssistantTurn(t *testing.T) {
 
 func TestWindowForModel(t *testing.T) {
 	cases := map[string]int{
-		"claude-opus-5-5[1m]": 1_000_000,
-		"claude-opus-5-5":     200_000,
-		"":                    200_000,
+		// Claude Code 2.1.311 stopped adding [1m] to models whose window is 1M by default.
+		"claude-opus-5-5":                   1_000_000,
+		"claude-opus-5-5[1m]":               1_000_000,
+		"claude-opus-5":                     1_000_000,
+		"claude-opus-4-7":                   1_000_000,
+		"claude-opus-4-6":                   200_000,
+		"claude-opus-4-6[1m]":               1_000_000,
+		"claude-opus-4-5-20251101":          200_000,
+		"claude-sonnet-5-5":                 1_000_000,
+		"claude-sonnet-5":                   1_000_000,
+		"claude-sonnet-4-6":                 200_000,
+		"claude-sonnet-4-6[1m]":             1_000_000,
+		"claude-haiku-5-5":                  1_000_000,
+		"claude-haiku-4-5-20251001":         200_000,
+		"claude-fable-5":                    1_000_000,
+		"claude-fable-5-1":                  1_000_000,
+		"claude-opus-6":                     1_000_000,
+		"us.anthropic.claude-opus-5-5-v1:0": 1_000_000,
+		"some-gateway-alias":                200_000,
+		"some-gateway-alias[1m]":            1_000_000,
+		"":                                  200_000,
 	}
 	for model, want := range cases {
 		if got := transcript.WindowFor(model); got != want {
 			t.Errorf("WindowFor(%q) = %d, want %d", model, got, want)
 		}
+	}
+}
+
+func TestWindowForHonorsClaudeCodesOptOutOf1M(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_DISABLE_1M_CONTEXT", "1")
+	for _, model := range []string{"claude-opus-5-5", "claude-opus-5-5[1m]", "claude-sonnet-4-6[1m]", "claude-fable-5-1"} {
+		if got := transcript.WindowFor(model); got != 200_000 {
+			t.Errorf("WindowFor(%q) = %d with 1M disabled, want 200000", model, got)
+		}
+	}
+}
+
+func TestLatestReadsABareOpus55As1M(t *testing.T) {
+	path := filepath.Join(t.TempDir(), sessionID+".jsonl")
+	writeLines(t, path, assistant("claude-opus-5-5", usage{input: 2, cacheRead: 126_600}))
+
+	got, err := transcript.Latest(path)
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if got.Window != 1_000_000 {
+		t.Errorf("Window = %d, want 1000000", got.Window)
 	}
 }
 
