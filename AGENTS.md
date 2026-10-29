@@ -17,7 +17,7 @@ You are working on `contextfill`, a small Go CLI that tells a Claude Code or Ope
 - **A bare `contextfill` reports, it doesn't print a primer.** This breaks the shared CLI rule on purpose: the tool has one read, and the point is to run it often. `--help` is the primer.
 - **Build and install:** `make install` puts `contextfill` in `$GOBIN`; `make hooks` once per clone installs the pre-commit hook (go vet, go fix, gofmt, go mod tidy, tests, `agents check`).
 
-<!-- agents:begin core@90f3ba -->
+<!-- agents:begin core@98d8a9 -->
 ## Working rules
 
 **Understand the why.** If the goal behind a request isn't clear, ask before solving — beware the XY problem.
@@ -51,9 +51,10 @@ You are working on `contextfill`, a small Go CLI that tells a Claude Code or Ope
 ## A session
 
 - **Start from the handoff doc in `project/`, if the last session left one, and `job orient`.** A handoff is current only if nothing has been committed since it (`git log` after its date); an older one is history, not a starting point. A handoff the user pastes wins.
+- **On the main thread, read `project/agents/delegation.md` in full before you begin, so whether to delegate is a choice, not a default.** A subagent skips this: its brief is its scope, and it doesn’t delegate further.
 - **Unless the user says they're around, assume they aren't.** Make the call yourself when it's safe and a two-way door, queue the rest, and report every decision at the end. While they're around, bring questions as they come up, including ones an agent raises mid-flight.
 - **Before starting, say what needs the user's eyes.**
-- **The session ends at the user's budget, or when your context passes 40%, whichever comes first.** Then integrate what's in flight, persist what the next session needs in the repo rather than memory, and write the handoff. A session that delegates begins wrapping up sooner, at 25%; `project/agents/delegation.md` covers it.
+- **Continue working if there’s more to be done, but wrap up once you cross your context limit.** The main thread should wrap after passing 25%; subagents should prepare to hand over their work after passing 40% (check using `contextfill` if available).
 
 ## Git
 
@@ -118,7 +119,7 @@ Pre-launch, zero users, no existing data. Never spend effort on backward compati
 - **The head of `AGENTS.md` lists where the docs live; keep that list current.**
 <!-- agents:end docs -->
 
-<!-- agents:begin index@acf4a6 -->
+<!-- agents:begin index@426bd3 -->
 ## Situational instructions
 
 These files carry instructions for specific situations. When one applies, read the file before acting and follow it.
@@ -129,4 +130,5 @@ These files carry instructions for specific situations. When one applies, read t
 | Before filing or claiming work in job, and when running as a subagent | `project/agents/jobs.md` |
 | Before dispatching any subagent | `project/agents/delegation.md` |
 | The first time a tool call is refused or denied, and before briefing a subagent | `project/agents/harness.md` |
+| Before writing a plan, importing a `tasks:` block, or detailing the leaves of work ahead | `project/agents/planning.md` |
 <!-- agents:end index -->
