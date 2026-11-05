@@ -11,7 +11,7 @@ import { spawn } from "node:child_process"
 // OpenCode's server runs with. --max is a subagent's limit, --main-max the
 // main session's.
 const command = process.env.CONTEXTFILL ?? "contextfill"
-const args = ["hook", "--harness", "opencode", "--max", "40", "--main-max", "25"]
+const args = ["hook", "--harness", "opencode", "--max", "40", "--main-max", "33"]
 const timeoutMs = 10_000
 
 // ask pipes the payload to `contextfill hook` and resolves to what it

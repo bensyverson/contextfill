@@ -224,10 +224,10 @@ stays silent otherwise:
 
   contextfill hook --max 40    reads the hook payload on stdin; past 40% it adds
                                that the fill is over 40%
-  contextfill hook --max 40 --main-max 25
-                               the same, but the main thread's limit is 25%
+  contextfill hook --max 40 --main-max 33
+                               the same, but the main thread's limit is 33%
                                (--main-max falls back to --max)
-  contextfill hook --harness opencode --max 40 --main-max 25
+  contextfill hook --harness opencode --max 40 --main-max 33
                                answers OpenCode's plugin (opencode/plugin) in
                                plain text, for the shell tool's commits
 
