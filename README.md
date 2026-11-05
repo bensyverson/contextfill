@@ -10,7 +10,7 @@ A [Claude Code](https://claude.com/claude-code) or [OpenCode](https://opencode.a
 brew install bensyverson/tap/contextfill
 ```
 
-Homebrew also installs [the OpenCode plugin](#after-every-commit); `brew info contextfill` shows where. Or, with Go, `go install github.com/bensyverson/contextfill/cmd/contextfill@latest`, or `make install` from a clone.
+On macOS 15 or later with Apple silicon, that pours a prebuilt, signed binary; anywhere else it builds from source with Go. Homebrew also installs [the OpenCode plugin](#after-every-commit); `brew info contextfill` shows where. Or, with Go, `go install github.com/bensyverson/contextfill/cmd/contextfill@latest`, or `make install` from a clone.
 
 ## Quick start
 
