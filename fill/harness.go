@@ -21,13 +21,19 @@ func Detect(env func(string) string) Harness {
 	return ClaudeCode
 }
 
+// claudeCodeAlias is Claude Code's name in bootstrap and the other house
+// tools, accepted as well as "claude".
+const claudeCodeAlias = "claude-code"
+
 // ParseHarness reads a --harness value.
 func ParseHarness(name string) (Harness, error) {
 	switch h := Harness(name); h {
 	case ClaudeCode, OpenCode:
 		return h, nil
+	case claudeCodeAlias:
+		return ClaudeCode, nil
 	}
-	return "", fmt.Errorf("--harness is %s or %s, not %q", ClaudeCode, OpenCode, name)
+	return "", fmt.Errorf("--harness is %s (or %s) or %s, not %q", ClaudeCode, claudeCodeAlias, OpenCode, name)
 }
 
 // SessionEnv is the variable the harness sets to the running session's id in

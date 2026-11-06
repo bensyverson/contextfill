@@ -64,7 +64,7 @@ func TestEachHarnessNamesItsSessionVariable(t *testing.T) {
 }
 
 func TestParseHarnessAcceptsEachName(t *testing.T) {
-	for name, want := range map[string]fill.Harness{"claude": fill.ClaudeCode, "opencode": fill.OpenCode} {
+	for name, want := range map[string]fill.Harness{"claude": fill.ClaudeCode, "claude-code": fill.ClaudeCode, "opencode": fill.OpenCode} {
 		if got, err := fill.ParseHarness(name); err != nil || got != want {
 			t.Errorf("ParseHarness(%q) = %q, %v; want %q", name, got, err, want)
 		}

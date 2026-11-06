@@ -50,6 +50,10 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 		fmt.Fprintf(stderr, "contextfill: %v\nRun contextfill --help for usage.\n", err)
 		return exitUsage
 	}
+	if o.help && o.action != "" {
+		fmt.Fprint(stdout, hookInstallHelp)
+		return exitOK
+	}
 	if o.help {
 		fmt.Fprint(stdout, helpText)
 		return exitOK
@@ -57,6 +61,9 @@ func run(args []string, env func(string) string, stdin io.Reader, stdout, stderr
 	if o.version {
 		fmt.Fprintf(stdout, "contextfill %s\n", version)
 		return exitOK
+	}
+	if o.action != "" {
+		return runInstall(o, env, stdout, stderr)
 	}
 	if o.hook {
 		return runHook(o, env, stdin, stdout, stderr)
@@ -220,7 +227,15 @@ unknown", and --max can't judge it.
 
 As a Claude Code PostToolUse hook on Bash, or through its OpenCode plugin, it
 tells the model its fill after every git commit (a subagent gets its own), and
-stays silent otherwise:
+stays silent otherwise. To set that up, or take it out:
+
+  contextfill hook install     adds the hook to each app present, by this
+                               binary's full path, with --max 40 --main-max 33;
+                               --harness claude-code or opencode picks one
+  contextfill hook uninstall   takes contextfill's hook out again
+                               (contextfill hook install --help has the details)
+
+The hook itself:
 
   contextfill hook --max 40    reads the hook payload on stdin; past 40% it adds
                                that the fill is over 40%

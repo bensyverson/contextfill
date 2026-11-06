@@ -30,37 +30,33 @@ $ contextfill --agents
   a7f0b3d95e12c4a86  12% of 200k  running   sonnet  Write the settings docs
 ```
 
-`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session, and `--harness claude` or `--harness opencode` picks whose. `contextfill --version` prints its version, and `contextfill --help` has the details.
+`--max 40` exits 1 when the fill is over 40%, so a script or a hook can branch on it. `--json` gives the same reading, with every subagent, as JSON. `contextfill <session-id>` reads another session, and `--harness claude` (or `claude-code`) or `--harness opencode` picks whose. `contextfill --version` prints its version, and `contextfill --help` has the details.
 
 ## After every commit
 
-As a Claude Code hook or an OpenCode plugin, it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. Add it to `~/.claude/settings.json`:
+As a Claude Code hook or an OpenCode plugin, it tells the model its fill each time a Bash call commits, however the commit is chained (`git add -A && git commit …`, `git -C <repo> commit`, a subshell). Inside a subagent it reports that agent's own fill. To set it up:
+
+```
+contextfill hook install
+```
+
+That sets up each app it finds (`~/.claude`, `~/.config/opencode`); `--harness claude-code` or `--harness opencode` picks one. Run it again any time: a second run changes nothing, and it prints one line per change. `contextfill hook uninstall` takes it out again.
+
+In Claude Code it adds a PostToolUse hook on Bash to `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR/settings.json`), keeping every other setting in order:
 
 ```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "contextfill hook --max 40 --main-max 33", "timeout": 10 }]
-      }
-    ]
-  }
-}
+{ "matcher": "Bash", "hooks": [{ "type": "command", "command": "/opt/homebrew/bin/contextfill hook --max 40 --main-max 33", "timeout": 10 }] }
 ```
 
-Use the full path if `contextfill` isn't on the `PATH` hooks run with. `--max 40` adds a note once the fill passes 40%. `--main-max 33` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Any other command gets no output.
+It names the binary by its full path, since a session started before Homebrew was installed has no `/opt/homebrew/bin` on its `PATH`; under Homebrew that's the prefix's `bin` link, not the versioned Cellar path an upgrade deletes. An older contextfill entry, wherever its binary lived, is replaced rather than joined. A settings file that isn't valid JSON is left alone, and the command exits 4. `--max 40` adds a note once the fill passes 40%. `--main-max 33` gives the main thread (the session you talk to, not a subagent) its own, earlier limit; without it the main thread uses `--max` too. Pass either to `hook install` to change them. Any other command gets no output.
 
-In OpenCode, the plugin does the same. Link it into OpenCode's global plugins directory, then tell OpenCode's background server to load it:
+In OpenCode, the plugin does the same. `hook install` links the plugin Homebrew installed into OpenCode's global plugins directory, `~/.config/opencode/plugins/contextfill.js`; then run `opencode reload` so OpenCode's background server loads it. A contextfill installed without the plugin (with `go install`, say) says so and changes nothing. From a clone, link it yourself:
 
 ```
-ln -s "$(brew --prefix)/opt/contextfill/share/contextfill/contextfill.js" ~/.config/opencode/plugins/contextfill.js
-opencode reload
+ln -s "$PWD/opencode/plugin/contextfill.js" ~/.config/opencode/plugins/contextfill.js
 ```
 
-From a clone, link `"$PWD/opencode/plugin/contextfill.js"` instead.
-
-The limits (`--max 40 --main-max 33`) are at the top of [the plugin](opencode/plugin/contextfill.js); to change them in a Homebrew install, copy the plugin rather than linking it, since an upgrade replaces it. Set `CONTEXTFILL` to the binary's full path if `contextfill` isn't on the `PATH` OpenCode runs with. A subagent's session is judged against `--max`, the main session against `--main-max`.
+The limits (`--max 40 --main-max 33`) are at the top of [the plugin](opencode/plugin/contextfill.js); to change them in a Homebrew install, copy the plugin rather than linking it, since an upgrade replaces it. `hook install` leaves such a copy alone. Set `CONTEXTFILL` to the binary's full path if `contextfill` isn't on the `PATH` OpenCode runs with. A subagent's session is judged against `--max`, the main session against `--main-max`.
 
 ## How it works
 
@@ -74,11 +70,11 @@ OpenCode sets `OPENCODE=1` and `OPENCODE_SESSION_ID` in its shells, and `context
 
 | Code | Meaning |
 |---|---|
-| 0 | Reported |
+| 0 | Reported, or `hook install` did its work or had none to do |
 | 1 | The fill is over `--max` |
 | 2 | Usage error |
-| 4 | The session is missing or holds no reading, or `--max` was given for a model whose window is unknown |
-| 5 | No session to read (`CLAUDE_CODE_SESSION_ID` or `OPENCODE_SESSION_ID` isn't set and no id was given), or OpenCode's server isn't running |
+| 4 | The session is missing or holds no reading, or `--max` was given for a model whose window is unknown, or `hook install` met a settings file that isn't valid JSON |
+| 5 | No session to read (`CLAUDE_CODE_SESSION_ID` or `OPENCODE_SESSION_ID` isn't set and no id was given), or OpenCode's server isn't running, or `hook install` found neither app |
 
 ---
 

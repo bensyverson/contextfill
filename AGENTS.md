@@ -2,7 +2,7 @@ IMPORTANT: As you implement features, keep the [README](README.md) and `contextf
 
 ## Overview
 
-You are working on `contextfill`, a small Go CLI that tells a Claude Code or OpenCode session how full its context window is, so an agent can check before it starts more work. It sums the input side of the session's latest assistant turn. `fill/` holds what both readers share: `Reading`, `Agent`, the `Source` interface and harness detection. `transcript/` is Claude Code's reader, over the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`). `opencode/` is OpenCode's, over its running server's local HTTP API ([why](project/2026-10-24-opencode-findings.md)). `hook/` answers Claude Code's PostToolUse hook, telling the model its fill after a commit. `cmd/contextfill/` is the thin CLI over all of them.
+You are working on `contextfill`, a small Go CLI that tells a Claude Code or OpenCode session how full its context window is, so an agent can check before it starts more work. It sums the input side of the session's latest assistant turn. `fill/` holds what both readers share: `Reading`, `Agent`, the `Source` interface and harness detection. `transcript/` is Claude Code's reader, over the session's transcript (`~/.claude/projects/<project>/<session id>.jsonl`). `opencode/` is OpenCode's, over its running server's local HTTP API ([why](project/2026-10-24-opencode-findings.md)). `hook/` answers Claude Code's PostToolUse hook, telling the model its fill after a commit. `install/` puts that hook into Claude Code's settings, or links the OpenCode plugin, for `contextfill hook install` and `uninstall`, touching nothing else in either. `cmd/contextfill/` is the thin CLI over all of them.
 
 ## Documentation
 
