@@ -1,4 +1,4 @@
 package main
 
 // version is contextfill's release; scripts/release bumps it.
-const version = "0.1.3"
+const version = "0.2.0"
